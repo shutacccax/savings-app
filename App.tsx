@@ -80,7 +80,7 @@ const App: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] px-6 z-40 safe-bottom-padding">
         <div className="max-w-lg mx-auto flex justify-between items-center h-20">
           <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home size={22} />} label="Home" />
-          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts'} icon={<Landmark size={22} />} label="Banks" />
+          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon={<Landmark size={22} />} label="Banks" />
           
           <div className="relative -top-4">
             <button
