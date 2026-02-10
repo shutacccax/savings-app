@@ -16,3 +16,14 @@ export const logout = () => (authLib as any).signOut(auth);
 // Use any for user type to bypass missing User export in the environment
 export const subscribeToAuthChanges = (callback: (user: any | null) => void) => 
   (authLib as any).onAuthStateChanged(auth, callback);
+
+/**
+ * Permanently deletes the authenticated user's account.
+ * Note: Firebase requires a recent login to perform this action.
+ */
+export const deleteUserAccount = async () => {
+  const user = auth.currentUser;
+  if (user) {
+    await (authLib as any).deleteUser(user);
+  }
+};

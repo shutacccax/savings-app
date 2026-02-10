@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { AddGoal } from './pages/AddGoal';
@@ -5,7 +6,7 @@ import { Accounts } from './pages/Accounts';
 import { Settings } from './pages/Settings';
 import { Auth } from './components/Auth';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { Landmark, Plus, Home, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { Landmark, Plus, Home, LogOut, Settings as SettingsIcon, WifiOff } from 'lucide-react';
 import { subscribeToAuthChanges, logout } from './firebase/authService';
 import { startRealtimeSync } from './firebase/firestoreService';
 import { migrateDexieToFirestore } from './firebase/migration';
@@ -24,9 +25,21 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('savr_dark') === 'true');
   const [accentKey, setAccentKey] = useState(() => localStorage.getItem('savr_accent') || 'pink');
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (darkMode) {
@@ -50,9 +63,14 @@ const App: React.FC = () => {
       if (stopSync) stopSync();
       setCurrentUser(user);
       setAuthLoading(false);
+      
       if (user) {
+        // Reset tab to dashboard on every login/session start
+        setActiveTab('dashboard');
+        
         try {
-          await migrateDexieToFirestore(user.uid);
+          // Fire and forget migration/sync to avoid blocking UI
+          migrateDexieToFirestore(user.uid).catch(console.error);
           stopSync = startRealtimeSync(user.uid);
         } catch (err) { console.error(err); }
       }
@@ -62,7 +80,10 @@ const App: React.FC = () => {
 
   if (authLoading) return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
-      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+        {isOffline && <p className="text-zinc-400 text-xs font-bold animate-pulse">Initializing offline...</p>}
+      </div>
     </div>
   );
 
@@ -70,6 +91,13 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-200 safe-top-padding">
+      {isOffline && (
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-zinc-900 text-white text-[10px] py-1 text-center font-bold flex items-center justify-center gap-2">
+          <WifiOff size={10} />
+          OFFLINE MODE — Changes will sync when online
+        </div>
+      )}
+
       <main className="mx-auto w-full max-w-lg flex-1 pb-24 pt-4 px-1">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'accounts' && <Accounts />}
@@ -80,7 +108,7 @@ const App: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] z-40">
         <div className="max-w-lg mx-auto grid grid-cols-5 h-20">
           <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home size={22} />} label="Home" />
-          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon={<Landmark size={22} />} label="Banks" />
+          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts'} icon={<Landmark size={22} />} label="Banks" />
           
           <div className="flex flex-col items-center justify-center">
             <button
