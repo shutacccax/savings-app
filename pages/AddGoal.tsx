@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -120,7 +119,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
   };
 
   return (
-    <div className="px-5 animate-in fade-in duration-500 pb-safe-offset relative">
+    <div className="px-5 animate-in fade-in duration-500 relative">
       {toast && (
         <div className="fixed top-[var(--safe-top)] left-1/2 -translate-x-1/2 z-[100] bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 duration-300 min-w-[280px]">
           <XCircle size={18} className="text-accent" />

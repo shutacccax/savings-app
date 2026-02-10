@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -37,7 +36,7 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] sm:rounded-3xl shadow-2xl p-6 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300 pb-safe" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] sm:rounded-3xl shadow-2xl p-6 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-bold text-accent">History</h3>

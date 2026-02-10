@@ -1,4 +1,4 @@
-const CACHE_NAME = 'savr-v4';
+const CACHE_NAME = 'savr-v5';
 
 const ASSETS_TO_CACHE = [
   '/',

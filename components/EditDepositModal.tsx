@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, AlertCircle, Plus, Minus } from 'lucide-react';
 import { roundToTwo } from '../utils/formatters';
@@ -57,7 +56,7 @@ export const EditDepositModal: React.FC<EditDepositModalProps> = ({ deposit, goa
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] sm:rounded-3xl shadow-2xl p-6 border-t dark:border-white/[0.05] animate-in slide-in-from-bottom duration-300 pb-safe" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] sm:rounded-3xl shadow-2xl p-6 border-t dark:border-white/[0.05] animate-in slide-in-from-bottom duration-300" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold text-accent">Edit Entry</h3>
           <button onClick={onClose} className="p-2 bg-accent/5 rounded-full hover:bg-accent/10 transition-colors">
