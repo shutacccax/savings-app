@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -125,7 +124,8 @@ export const Dashboard: React.FC = () => {
   const handleDeleteGoal = async () => {
     if (!deleteGoalId) return;
     try {
-      await db.transaction('rw', db.goals, db.deposits, async () => {
+      // Corrected the transaction call to pass tables as an array and handle properties safely
+      await db.transaction('rw', [db.goals, db.deposits], async () => {
         await db.deposits.where('goalId').equals(deleteGoalId).delete();
         await db.goals.delete(deleteGoalId);
       });
