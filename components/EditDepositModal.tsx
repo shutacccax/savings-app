@@ -1,33 +1,54 @@
+
 import React, { useState } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { X, AlertCircle, Plus, Minus } from 'lucide-react';
 import { roundToTwo } from '../utils/formatters';
 import { auth } from '../firebase/config';
 import { fsUpdateDeposit } from '../firebase/firestoreService';
-import { Deposit } from '../types';
+import { Deposit, Goal } from '../types';
 
 interface EditDepositModalProps {
   deposit: Deposit;
+  goal: Goal;
   onClose: () => void;
   onSuccess: (msg: string) => void;
 }
 
-export const EditDepositModal: React.FC<EditDepositModalProps> = ({ deposit, onClose, onSuccess }) => {
+export const EditDepositModal: React.FC<EditDepositModalProps> = ({ deposit, goal, onClose, onSuccess }) => {
   const [amount, setAmount] = useState<string>(deposit.amount.toString());
   const [date, setDate] = useState<string>(new Date(deposit.date).toISOString().split('T')[0]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Challenge mode state
+  const [selectedDenom, setSelectedDenom] = useState<number | null>(
+    goal.mode === 'challenge' ? (deposit.denominationValue || goal.denominations?.[0]?.value || null) : null
+  );
+  const [qty, setQty] = useState(deposit.quantity || 1);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const uid = auth.currentUser?.uid;
-    const amountNum = roundToTwo(parseFloat(amount));
     if (!uid) return setError("User not authenticated");
-    if (isNaN(amountNum) || amountNum <= 0) return setError("Amount must be greater than zero");
+
+    let finalAmount = 0;
+    let updates: Partial<Deposit> = { date: new Date(date).toISOString() };
+
+    if (goal.mode === 'challenge') {
+      if (!selectedDenom) return setError("Select a denomination");
+      finalAmount = selectedDenom * qty;
+      updates.amount = finalAmount;
+      updates.denominationValue = selectedDenom;
+      updates.quantity = qty;
+    } else {
+      finalAmount = roundToTwo(parseFloat(amount));
+      if (isNaN(finalAmount) || finalAmount <= 0) return setError("Amount must be greater than zero");
+      updates.amount = finalAmount;
+    }
 
     setIsSubmitting(true);
     try {
-      await fsUpdateDeposit(uid, deposit.id!, { amount: amountNum, date: new Date(date).toISOString() });
+      await fsUpdateDeposit(uid, deposit.id!, updates);
       onSuccess('Deposit updated! ✨');
       onClose();
     } catch (err) { onSuccess('Error: Failed to update'); }
@@ -52,29 +73,86 @@ export const EditDepositModal: React.FC<EditDepositModalProps> = ({ deposit, onC
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 ml-1">Amount</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-bold">₱</span>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-4 pl-9 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none text-lg font-bold"
-                required
-                step="0.01"
-              />
+          {goal.mode === 'normal' ? (
+            <div>
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 ml-1">Amount</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-bold">₱</span>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full h-14 p-4 pl-9 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none text-lg font-bold"
+                  required
+                  step="0.01"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 ml-1">Select Denomination</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {goal.denominations?.map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDenom(d.value)}
+                      className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all ${
+                        selectedDenom === d.value 
+                          ? 'bg-accent text-white border-accent shadow-md' 
+                          : 'bg-zinc-50 dark:bg-zinc-800/50 text-zinc-500 border-zinc-100 dark:border-zinc-700'
+                      }`}
+                    >
+                      ₱{d.value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2 ml-1">Quantity</label>
+                <div className="flex items-center gap-4 bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-2xl border border-zinc-100 dark:border-zinc-700">
+                  <button
+                    type="button"
+                    onClick={() => setQty(Math.max(1, qty - 1))}
+                    className="p-3 bg-white dark:bg-zinc-900 rounded-xl text-accent shadow-sm active:scale-90 transition-all"
+                  >
+                    <Minus size={20} />
+                  </button>
+                  <div className="flex-1 text-center">
+                    <span className="text-xl font-bold text-zinc-800 dark:text-zinc-100">{qty}</span>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block">Bills</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setQty(qty + 1)}
+                    className="p-3 bg-white dark:bg-zinc-900 rounded-xl text-accent shadow-sm active:scale-90 transition-all"
+                  >
+                    <Plus size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {selectedDenom && (
+                <div className="p-3 bg-accent/5 rounded-xl border border-accent/10 flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Saving Total</span>
+                  <span className="font-bold text-accent">₱ {(selectedDenom * qty).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
             <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 ml-1">Date</label>
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none"
+              className="w-full h-14 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/20 focus:border-accent outline-none"
               required
               max={new Date().toISOString().split('T')[0]}
+              style={{ minWidth: '0' }}
             />
           </div>
 

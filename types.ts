@@ -1,6 +1,12 @@
 
+export interface Denomination {
+  value: number;
+  targetQty: number;
+  currentQty: number;
+}
+
 export interface Goal {
-  id?: string; // Using string for Firestore doc IDs
+  id?: string;
   name: string;
   emoji?: string;
   totalAmount: number;
@@ -11,6 +17,9 @@ export interface Goal {
   completedAt?: string;
   isArchived?: boolean;
   archivedAt?: string | null;
+  // Challenge Mode Fields
+  mode: 'normal' | 'challenge';
+  denominations?: Denomination[];
 }
 
 export interface Deposit {
@@ -18,6 +27,9 @@ export interface Deposit {
   goalId: string;
   amount: number;
   date: string;
+  // Challenge Mode Fields
+  denominationValue?: number;
+  quantity?: number;
 }
 
 export interface Account {

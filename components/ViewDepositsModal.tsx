@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -60,6 +61,11 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
               <div key={deposit.id} className="bg-accent/5 dark:bg-accent/5 border border-accent/5 dark:border-accent/10 rounded-2xl p-4 flex items-center justify-between group">
                 <div>
                   <div className="font-bold text-zinc-800 dark:text-zinc-100">{formatCurrency(deposit.amount)}</div>
+                  {goal.mode === 'challenge' && deposit.denominationValue && (
+                    <div className="text-[10px] font-bold text-accent/60 uppercase">
+                      ₱{deposit.denominationValue} x {deposit.quantity}
+                    </div>
+                  )}
                   <div className="text-[11px] text-zinc-400">{formatDate(deposit.date)}</div>
                 </div>
                 <div className="flex gap-1">
@@ -78,7 +84,14 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
         </div>
       </div>
 
-      {editingDeposit && <EditDepositModal deposit={editingDeposit} onClose={() => setEditingDeposit(null)} onSuccess={onToast} />}
+      {editingDeposit && (
+        <EditDepositModal 
+          deposit={editingDeposit} 
+          goal={goal} 
+          onClose={() => setEditingDeposit(null)} 
+          onSuccess={onToast} 
+        />
+      )}
       <ConfirmationModal isOpen={pendingDeleteId !== null} title="Delete Deposit?" message="Remove this record? Your progress will update." confirmLabel="Delete" confirmVariant="danger" onConfirm={handleDeleteDeposit} onCancel={() => setPendingDeleteId(null)} />
     </div>
   );

@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -8,15 +9,13 @@ import {
   query, 
   serverTimestamp,
   getDocs,
-  limit
+  limit,
+  getDoc
 } from 'firebase/firestore';
 import { firestore } from './config';
 import { db } from '../db/db';
 import { Goal, Deposit, Account } from '../types';
 
-/**
- * Generic sync helper with robust error handling
- */
 const syncCollectionToDexie = (uid: string, subPath: string, dexieTable: any) => {
   const colRef = collection(firestore, `users/${uid}/${subPath}`);
   
@@ -58,9 +57,6 @@ export const isFirestoreEmpty = async (uid: string) => {
   return snap.empty;
 };
 
-// --- CRUD OPERATIONS ---
-
-// Goals
 export const fsAddGoal = async (uid: string, goal: Goal) => {
   const docRef = doc(collection(firestore, `users/${uid}/goals`));
   const data = { 
@@ -103,7 +99,6 @@ export const fsDeleteGoal = async (uid: string, goalId: string) => {
   await deleteDoc(doc(firestore, `users/${uid}/goals/${goalId}`));
 };
 
-// Accounts
 export const fsAddAccount = async (uid: string, account: Account) => {
   const docRef = doc(collection(firestore, `users/${uid}/accounts`));
   const data = { ...account, id: docRef.id, createdAt: new Date().toISOString(), updatedAt: serverTimestamp() };
@@ -115,19 +110,104 @@ export const fsDeleteAccount = async (uid: string, accountId: string) => {
   await deleteDoc(doc(firestore, `users/${uid}/accounts/${accountId}`));
 };
 
-// Deposits
 export const fsAddDeposit = async (uid: string, deposit: Deposit) => {
   const docRef = doc(collection(firestore, `users/${uid}/deposits`));
   const data = { ...deposit, id: docRef.id, updatedAt: serverTimestamp() };
+  
+  const goalRef = doc(firestore, `users/${uid}/goals/${deposit.goalId}`);
+  const goalSnap = await getDoc(goalRef);
+  
+  if (goalSnap.exists()) {
+    const goalData = goalSnap.data() as Goal;
+    if (goalData.mode === 'challenge' && deposit.denominationValue && deposit.quantity) {
+      const updatedDenominations = goalData.denominations?.map(d => {
+        if (d.value === deposit.denominationValue) {
+          return { ...d, currentQty: d.currentQty + (deposit.quantity || 0) };
+        }
+        return d;
+      });
+      await updateDoc(goalRef, { 
+        denominations: updatedDenominations,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
   await setDoc(docRef, data);
   return docRef.id;
 };
 
 export const fsUpdateDeposit = async (uid: string, depositId: string, updates: Partial<Deposit>) => {
-  const docRef = doc(firestore, `users/${uid}/deposits/${depositId}`);
-  await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
+  const depositRef = doc(firestore, `users/${uid}/deposits/${depositId}`);
+  const depositSnap = await getDoc(depositRef);
+  if (!depositSnap.exists()) return;
+  const oldDeposit = depositSnap.data() as Deposit;
+
+  const goalRef = doc(firestore, `users/${uid}/goals/${oldDeposit.goalId}`);
+  const goalSnap = await getDoc(goalRef);
+  
+  if (goalSnap.exists()) {
+    const goalData = goalSnap.data() as Goal;
+    
+    // Handle Challenge Mode synchronization
+    if (goalData.mode === 'challenge') {
+      let updatedDenominations = [...(goalData.denominations || [])];
+
+      // 1. Revert Old Quantity
+      if (oldDeposit.denominationValue && oldDeposit.quantity) {
+        updatedDenominations = updatedDenominations.map(d => 
+          d.value === oldDeposit.denominationValue 
+            ? { ...d, currentQty: Math.max(0, d.currentQty - oldDeposit.quantity!) } 
+            : d
+        );
+      }
+
+      // 2. Apply New Quantity
+      const newDenom = updates.denominationValue || oldDeposit.denominationValue;
+      const newQty = updates.quantity !== undefined ? updates.quantity : oldDeposit.quantity;
+      
+      if (newDenom && newQty) {
+        updatedDenominations = updatedDenominations.map(d => 
+          d.value === newDenom 
+            ? { ...d, currentQty: d.currentQty + newQty } 
+            : d
+        );
+      }
+
+      await updateDoc(goalRef, { 
+        denominations: updatedDenominations,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
+  await updateDoc(depositRef, { ...updates, updatedAt: serverTimestamp() });
 };
 
 export const fsDeleteDeposit = async (uid: string, depositId: string) => {
-  await deleteDoc(doc(firestore, `users/${uid}/deposits/${depositId}`));
+  const depositRef = doc(firestore, `users/${uid}/deposits/${depositId}`);
+  const depositSnap = await getDoc(depositRef);
+  if (!depositSnap.exists()) return;
+  const deposit = depositSnap.data() as Deposit;
+
+  const goalRef = doc(firestore, `users/${uid}/goals/${deposit.goalId}`);
+  const goalSnap = await getDoc(goalRef);
+  
+  if (goalSnap.exists()) {
+    const goalData = goalSnap.data() as Goal;
+    if (goalData.mode === 'challenge' && deposit.denominationValue && deposit.quantity) {
+      const updatedDenominations = goalData.denominations?.map(d => {
+        if (d.value === deposit.denominationValue) {
+          return { ...d, currentQty: Math.max(0, d.currentQty - deposit.quantity!) };
+        }
+        return d;
+      });
+      await updateDoc(goalRef, { 
+        denominations: updatedDenominations,
+        updatedAt: serverTimestamp()
+      });
+    }
+  }
+
+  await deleteDoc(depositRef);
 };

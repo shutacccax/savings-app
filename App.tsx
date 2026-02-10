@@ -4,6 +4,7 @@ import { AddGoal } from './pages/AddGoal';
 import { Accounts } from './pages/Accounts';
 import { Settings } from './pages/Settings';
 import { Auth } from './components/Auth';
+import { ConfirmationModal } from './components/ConfirmationModal';
 import { Landmark, Plus, Home, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { subscribeToAuthChanges, logout } from './firebase/authService';
 import { startRealtimeSync } from './firebase/firestoreService';
@@ -25,6 +26,7 @@ const App: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('savr_dark') === 'true');
   const [accentKey, setAccentKey] = useState(() => localStorage.getItem('savr_accent') || 'pink');
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     if (darkMode) {
@@ -78,7 +80,7 @@ const App: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] px-6 z-40 safe-bottom-padding">
         <div className="max-w-lg mx-auto flex justify-between items-center h-20">
           <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home size={22} />} label="Home" />
-          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon={<Landmark size={22} />} label="Banks" />
+          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts'} icon={<Landmark size={22} />} label="Banks" />
           
           <div className="relative -top-4">
             <button
@@ -92,7 +94,7 @@ const App: React.FC = () => {
           <NavButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<SettingsIcon size={22} />} label="Theme" />
           
           <button 
-            onClick={() => logout()}
+            onClick={() => setIsLogoutModalOpen(true)}
             className="flex flex-col items-center justify-center space-y-1 text-zinc-400 dark:text-zinc-600 hover:text-red-400 transition-colors"
           >
             <LogOut size={22} />
@@ -100,6 +102,19 @@ const App: React.FC = () => {
           </button>
         </div>
       </nav>
+
+      <ConfirmationModal 
+        isOpen={isLogoutModalOpen} 
+        title="Logout?" 
+        message="Are you sure you want to sign out of Savr?" 
+        confirmLabel="Logout" 
+        confirmVariant="danger"
+        onConfirm={() => {
+          logout();
+          setIsLogoutModalOpen(false);
+        }}
+        onCancel={() => setIsLogoutModalOpen(false)}
+      />
     </div>
   );
 };

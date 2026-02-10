@@ -1,4 +1,4 @@
-const CACHE_NAME = 'savr-v1';
+const CACHE_NAME = 'savr-v3';
 
 const ASSETS_TO_CACHE = [
   '/',
@@ -6,7 +6,8 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/icon-180.png',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  '/favicon-32.png'
 ];
 
 // Install event - Cache static assets

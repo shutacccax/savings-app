@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { login, register } from '../firebase/authService';
-import { PiggyBank, Mail, Lock, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { PiggyBank, Mail, Lock, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -19,6 +20,10 @@ export const Auth: React.FC = () => {
     } catch (err: any) {
       setError(err.message || "Auth error");
     } finally { setLoading(false); }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -44,6 +49,9 @@ export const Auth: React.FC = () => {
             <Mail size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
               type="email"
+              name="email"
+              id="email"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
@@ -54,13 +62,24 @@ export const Auth: React.FC = () => {
           <div className="relative">
             <Lock size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
+              name="password"
+              id="password"
+              autoComplete={isLogin ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full h-14 pl-12 pr-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-medium focus:border-accent outline-none transition-all"
+              className="w-full h-14 pl-12 pr-12 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-medium focus:border-accent outline-none transition-all"
               required
             />
+            <button
+              type="button"
+              onClick={togglePasswordVisibility}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-accent transition-colors p-1"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
 
           <button
@@ -73,7 +92,11 @@ export const Auth: React.FC = () => {
         </form>
 
         <button 
-          onClick={() => setIsLogin(!isLogin)}
+          onClick={() => {
+            setIsLogin(!isLogin);
+            setError(null);
+            setShowPassword(false);
+          }}
           className="w-full mt-6 text-sm text-zinc-400 font-bold hover:text-accent transition-colors"
         >
           {isLogin ? "Need an account? Join us" : "Have an account? Log in"}

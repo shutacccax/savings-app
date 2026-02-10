@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -8,7 +9,7 @@ import { DepositModal } from '../components/DepositModal';
 import { ViewDepositsModal } from '../components/ViewDepositsModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { MonthlySummary } from '../components/MonthlySummary';
-import { PiggyBank, Calendar, Wallet, Trash2, History, Archive, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { PiggyBank, Calendar, Wallet, Trash2, History, Archive, RotateCcw, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { auth } from '../firebase/config';
 import { fsDeleteGoal, fsArchiveGoal, fsRestoreGoal } from '../firebase/firestoreService';
@@ -22,7 +23,6 @@ export const Dashboard: React.FC = () => {
   const [isArchiveExpanded, setIsArchiveExpanded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   
-  // Ref to track goal states between renders to detect transitions
   const prevGoalsRef = useRef<Record<string, boolean>>({});
   const hasInitializedRef = useRef(false);
 
@@ -58,6 +58,7 @@ export const Dashboard: React.FC = () => {
         const remaining = Math.max(0, roundToTwo(goal.totalAmount - totalSaved));
         const progressPercent = Math.min(100, goal.totalAmount > 0 ? (totalSaved / goal.totalAmount) * 100 : 0);
         const daysRemaining = calculateDaysRemaining(goal.targetDate);
+        
         return {
           ...goal,
           totalSaved,
@@ -139,6 +140,26 @@ export const Dashboard: React.FC = () => {
         </div>
         <ProgressBar progress={goal.progressPercent} />
       </div>
+
+      {/* Peso Challenge Specific View */}
+      {goal.mode === 'challenge' && goal.denominations && goal.denominations.length > 0 && (
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          {goal.denominations.map(d => (
+            <div key={d.value} className="bg-zinc-50 dark:bg-white/[0.02] p-2 rounded-xl border border-zinc-100 dark:border-white/[0.05]">
+              <div className="flex justify-between items-center text-[8px] font-bold text-zinc-400 uppercase tracking-tighter mb-1">
+                <span>₱{d.value}</span>
+                <span className={d.currentQty >= d.targetQty ? 'text-green-500' : 'text-accent'}>{d.currentQty}/{d.targetQty}</span>
+              </div>
+              <div className="h-1 bg-accent/10 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full transition-all duration-500 ${d.currentQty >= d.targetQty ? 'bg-green-500' : 'bg-accent'}`}
+                  style={{ width: `${Math.min(100, (d.currentQty / d.targetQty) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 mb-5">
         <div className="bg-accent/5 dark:bg-white/[0.02] rounded-xl p-3 border border-accent/5 dark:border-transparent">

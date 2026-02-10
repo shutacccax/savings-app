@@ -39,9 +39,38 @@
         ::-webkit-scrollbar { display: none; }
         
         /* iPhone Safe Areas */
-        .safe-top-padding { padding-top: calc(var(--safe-top) + 16px); }
-        .safe-bottom-padding { padding-bottom: calc(var(--safe-bottom) + 8px); }
+        .safe-top-padding {
+            padding-top: var(--safe-top);
+        }
+
+        .safe-bottom-padding {
+            padding-bottom: var(--safe-bottom);
+        }
         
+        /* Fix for Safari Date Inputs stretching and iOS Zoom */
+        input[type="date"], 
+        input[type="number"], 
+        input[type="text"], 
+        input[type="email"], 
+        input[type="password"],
+        select {
+            font-size: 16px !important; /* Prevents auto-zoom on iOS */
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="date"] {
+            min-width: 0;
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        /* Safari specific date input alignment fix */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            margin-right: 4px;
+        }
+
         .bg-accent { background-color: var(--accent); }
         .text-accent { color: var(--accent); }
         .border-accent { border-color: var(--accent); }

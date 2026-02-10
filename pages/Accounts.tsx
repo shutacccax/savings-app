@@ -36,6 +36,7 @@ export const Accounts: React.FC = () => {
     try {
       await fsAddAccount(uid, { name: cleanName, initialBalance: 0, createdAt: new Date().toISOString() });
       setName(''); setIsAdding(false); setError(null); setToast("Added!");
+      setTimeout(() => setToast(null), 3000);
     } catch (err) { setError("Failed"); }
   };
 
@@ -47,7 +48,7 @@ export const Accounts: React.FC = () => {
   return (
     <div className="px-5">
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] bg-accent text-white px-5 py-2.5 rounded-full shadow-lg flex items-center animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-[var(--safe-top)] left-1/2 -translate-x-1/2 z-[100] bg-accent text-white px-5 py-2.5 rounded-full shadow-lg flex items-center animate-in fade-in slide-in-from-top-2">
           <CheckCircle2 size={16} className="mr-2" />
           <span className="font-bold text-sm">{toast}</span>
         </div>
@@ -103,7 +104,7 @@ export const Accounts: React.FC = () => {
         )}
       </div>
 
-      <ConfirmationModal isOpen={deleteId !== null} title="Delete?" message="Remove this bank record." confirmLabel="Delete" confirmVariant="danger" onConfirm={() => fsDeleteAccount(auth.currentUser!.uid, deleteId!).then(() => { setToast("Deleted"); setDeleteId(null); })} onCancel={() => setDeleteId(null)} />
+      <ConfirmationModal isOpen={deleteId !== null} title="Delete?" message="Remove this bank record." confirmLabel="Delete" confirmVariant="danger" onConfirm={() => fsDeleteAccount(auth.currentUser!.uid, deleteId!).then(() => { setToast("Deleted"); setDeleteId(null); setTimeout(() => setToast(null), 3000); })} onCancel={() => setDeleteId(null)} />
       <ConfirmationModal isOpen={showBlocker} title="Blocked" message="Move active goals first." confirmLabel="Got it" showCancel={false} onConfirm={() => setShowBlocker(false)} />
     </div>
   );
