@@ -1,112 +1,116 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { AddGoal } from './pages/AddGoal';
 import { Accounts } from './pages/Accounts';
-import { Landmark, Plus, Home } from 'lucide-react';
-import { db } from './db/db';
+import { Settings } from './pages/Settings';
+import { Auth } from './components/Auth';
+import { Landmark, Plus, Home, LogOut, Settings as SettingsIcon } from 'lucide-react';
+import { subscribeToAuthChanges, logout } from './firebase/authService';
+import { startRealtimeSync } from './firebase/firestoreService';
+import { migrateDexieToFirestore } from './firebase/migration';
 
-type Tab = 'dashboard' | 'accounts' | 'add-goal';
+type Tab = 'dashboard' | 'accounts' | 'add-goal' | 'settings';
+
+const ACCENT_COLORS = {
+  pink: { main: '#ec4899', soft: '#fdf2f8' },
+  blue: { main: '#3b82f6', soft: '#eff6ff' },
+  purple: { main: '#a855f7', soft: '#faf5ff' },
+  green: { main: '#10b981', soft: '#ecfdf5' },
+  orange: { main: '#f97316', soft: '#fff7ed' },
+};
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('savr_dark') === 'true');
+  const [accentKey, setAccentKey] = useState(() => localStorage.getItem('savr_accent') || 'pink');
 
-  // Initialize with a default account if none exist
   useEffect(() => {
-    const init = async () => {
-      const count = await db.accounts.count();
-      if (count === 0) {
-        await db.accounts.add({
-          name: 'Main Savings',
-          initialBalance: 0,
-          createdAt: new Date().toISOString(),
-        });
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('savr_dark', darkMode.toString());
+  }, [darkMode]);
+
+  useEffect(() => {
+    const colors = ACCENT_COLORS[accentKey as keyof typeof ACCENT_COLORS] || ACCENT_COLORS.pink;
+    document.documentElement.style.setProperty('--accent', colors.main);
+    document.documentElement.style.setProperty('--accent-soft', darkMode ? `${colors.main}15` : colors.soft);
+    localStorage.setItem('savr_accent', accentKey);
+  }, [accentKey, darkMode]);
+
+  useEffect(() => {
+    let stopSync: (() => void) | null = null;
+    const unsubAuth = subscribeToAuthChanges(async (user) => {
+      if (stopSync) stopSync();
+      setCurrentUser(user);
+      setAuthLoading(false);
+      if (user) {
+        try {
+          await migrateDexieToFirestore(user.uid);
+          stopSync = startRealtimeSync(user.uid);
+        } catch (err) { console.error(err); }
       }
-    };
-    init();
+    });
+    return () => unsubAuth();
   }, []);
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard />;
-      case 'add-goal':
-        return (
-          <AddGoal 
-            onBack={() => setActiveTab('dashboard')} 
-            onSuccess={() => setActiveTab('dashboard')} 
-          />
-        );
-      case 'accounts':
-        return <Accounts />;
-      default:
-        return <Dashboard />;
-    }
-  };
+  if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
+      <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
+  if (!currentUser) return <Auth />;
 
   return (
-    <div className="min-h-screen pb-20 safe-bottom">
-      {/* Background Decor */}
-      <div className="fixed top-0 right-0 -translate-y-1/2 translate-x-1/2 w-64 h-64 bg-pink-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
-      <div className="fixed bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-64 h-64 bg-pink-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
-
-      {/* Main Viewport */}
-      <main className="mx-auto max-w-lg">
-        {renderContent()}
+    <div className="min-h-screen flex flex-col transition-colors duration-200 safe-top-padding">
+      <main className="mx-auto w-full max-w-lg flex-1 pb-32 pt-4 px-1">
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'accounts' && <Accounts />}
+        {activeTab === 'add-goal' && <AddGoal onBack={() => setActiveTab('dashboard')} onSuccess={() => setActiveTab('dashboard')} />}
+        {activeTab === 'settings' && <Settings darkMode={darkMode} setDarkMode={setDarkMode} accentKey={accentKey} setAccentKey={setAccentKey} accentColors={ACCENT_COLORS} />}
       </main>
 
-      {/* Bottom Navbar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-pink-50 px-6 py-3 safe-bottom z-40">
-        <div className="max-w-lg mx-auto grid grid-cols-3 items-center">
-          <div className="flex justify-center">
-            <NavButton 
-              active={activeTab === 'dashboard'} 
-              onClick={() => setActiveTab('dashboard')} 
-              icon={<Home size={24} />} 
-              label="Home"
-            />
-          </div>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] px-6 z-40 safe-bottom-padding">
+        <div className="max-w-lg mx-auto flex justify-between items-center h-20">
+          <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home size={22} />} label="Home" />
+          <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon={<Landmark size={22} />} label="Banks" />
           
-          {/* Central Action Button - Perfectly Centered */}
-          <div className="flex justify-center relative -top-8">
+          <div className="relative -top-4">
             <button
               onClick={() => setActiveTab('add-goal')}
-              className="bg-pink-500 text-white p-4 rounded-full shadow-xl shadow-pink-200 active:scale-90 transition-all border-4 border-white flex items-center justify-center"
+              className={`bg-accent text-white p-4 rounded-full shadow-lg shadow-accent/20 active:scale-90 transition-all border-4 border-white dark:border-zinc-950 flex items-center justify-center ${activeTab === 'add-goal' ? 'rotate-45' : ''}`}
             >
-              <Plus size={28} />
+              <Plus size={24} />
             </button>
           </div>
 
-          <div className="flex justify-center">
-            <NavButton 
-              active={activeTab === 'accounts'} 
-              onClick={() => setActiveTab('accounts')} 
-              icon={<Landmark size={24} />} 
-              label="Accounts"
-            />
-          </div>
+          <NavButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<SettingsIcon size={22} />} label="Theme" />
+          
+          <button 
+            onClick={() => logout()}
+            className="flex flex-col items-center justify-center space-y-1 text-zinc-400 dark:text-zinc-600 hover:text-red-400 transition-colors"
+          >
+            <LogOut size={22} />
+            <span className="text-[10px] uppercase tracking-wider font-semibold">Logout</span>
+          </button>
         </div>
       </nav>
     </div>
   );
 };
 
-interface NavButtonProps {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}
-
-const NavButton: React.FC<NavButtonProps> = ({ active, onClick, icon, label }) => (
+const NavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center space-y-1 transition-all w-20 ${
-      active ? 'text-pink-500 scale-110 font-bold' : 'text-gray-400'
-    }`}
+    className={`flex flex-col items-center justify-center space-y-1 transition-all ${active ? 'text-accent' : 'text-zinc-400 dark:text-zinc-600 hover:text-accent/60'}`}
   >
     {icon}
-    <span className="text-[10px] uppercase tracking-wider">{label}</span>
+    <span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span>
   </button>
 );
 

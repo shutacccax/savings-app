@@ -1,13 +1,17 @@
-
 import { db } from '../db/db';
+import { auth, firestore } from '../firebase/config';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 /**
- * Recalculates total saved for a goal and updates its completion status in the database.
- * This should be called after any deposit addition, edit, or deletion.
+ * Recalculates total saved for a goal and updates its completion status.
+ * Updates Firestore which then propagates to Dexie via listeners.
  */
-export const syncGoalCompletion = async (goalId: number) => {
+export const syncGoalCompletion = async (goalId: string | number) => {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+
   try {
-    const goal = await db.goals.get(goalId);
+    const goal = await db.goals.get(goalId as any);
     if (!goal) return;
 
     const deposits = await db.deposits.where('goalId').equals(goalId).toArray();
@@ -15,14 +19,18 @@ export const syncGoalCompletion = async (goalId: number) => {
     const isReached = totalSaved >= goal.totalAmount;
 
     if (isReached && !goal.isCompleted) {
-      await db.goals.update(goalId, {
+      const docRef = doc(firestore, `users/${uid}/goals/${goalId}`);
+      await updateDoc(docRef, {
         isCompleted: true,
-        completedAt: new Date().toISOString()
+        completedAt: new Date().toISOString(),
+        updatedAt: serverTimestamp()
       });
     } else if (!isReached && goal.isCompleted) {
-      await db.goals.update(goalId, {
+      const docRef = doc(firestore, `users/${uid}/goals/${goalId}`);
+      await updateDoc(docRef, {
         isCompleted: false,
-        completedAt: undefined
+        completedAt: null,
+        updatedAt: serverTimestamp()
       });
     }
   } catch (err) {

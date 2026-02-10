@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -7,7 +6,8 @@ import { X, Trash2, Edit3, ReceiptText } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { EditDepositModal } from './EditDepositModal';
 import { ConfirmationModal } from './ConfirmationModal';
-import { syncGoalCompletion } from '../utils/dbHelpers';
+import { auth } from '../firebase/config';
+import { fsDeleteDeposit } from '../firebase/firestoreService';
 
 interface ViewDepositsModalProps {
   goal: Goal;
@@ -17,7 +17,7 @@ interface ViewDepositsModalProps {
 
 export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onClose, onToast }) => {
   const [editingDeposit, setEditingDeposit] = useState<Deposit | null>(null);
-  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const deposits = useLiveQuery(
     () => db.deposits.where('goalId').equals(goal.id!).reverse().sortBy('date'),
@@ -25,92 +25,61 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
   );
 
   const handleDeleteDeposit = async () => {
-    if (!pendingDeleteId) return;
+    const uid = auth.currentUser?.uid;
+    if (!pendingDeleteId || !uid) return;
     try {
-      await db.deposits.delete(pendingDeleteId);
-      await syncGoalCompletion(goal.id!);
+      await fsDeleteDeposit(uid, pendingDeleteId);
       onToast('Deposit deleted');
       setPendingDeleteId(null);
-    } catch (err) {
-      console.error(err);
-      onToast('Error: Failed to delete');
-    }
+    } catch (err) { onToast('Error deleting entry'); }
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-        <div className="flex justify-between items-center mb-6 flex-shrink-0">
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+        <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="text-xl font-bold text-pink-600">History</h3>
-            <p className="text-xs text-pink-400 font-medium">{goal.name}</p>
+            <h3 className="text-xl font-bold text-accent">History</h3>
+            <p className="text-xs text-zinc-400 font-medium">{goal.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 bg-pink-50 rounded-full">
-            <X size={20} className="text-pink-600" />
+          <button onClick={onClose} className="p-2 bg-accent/5 rounded-full text-accent">
+            <X size={20} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-3">
           {!deposits ? (
-            <p className="text-center text-gray-400 py-8">Loading deposits...</p>
+            <p className="text-center text-zinc-400 py-8">Loading history...</p>
           ) : deposits.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <ReceiptText size={40} className="mx-auto mb-2 text-pink-100" />
-              <p>No deposits recorded yet.</p>
+            <div className="text-center py-12 text-zinc-300 dark:text-zinc-600">
+              <ReceiptText size={40} className="mx-auto mb-2 opacity-50" />
+              <p className="font-medium">No deposits recorded yet.</p>
             </div>
           ) : (
             deposits.map((deposit) => (
-              <div key={deposit.id} className="bg-pink-50/50 border border-pink-100 rounded-2xl p-4 flex items-center justify-between group transition-all">
+              <div key={deposit.id} className="bg-accent/5 dark:bg-accent/5 border border-accent/5 dark:border-accent/10 rounded-2xl p-4 flex items-center justify-between group">
                 <div>
-                  <div className="font-bold text-gray-800">{formatCurrency(deposit.amount)}</div>
-                  <div className="text-xs text-gray-500">{formatDate(deposit.date)}</div>
+                  <div className="font-bold text-zinc-800 dark:text-zinc-100">{formatCurrency(deposit.amount)}</div>
+                  <div className="text-[11px] text-zinc-400">{formatDate(deposit.date)}</div>
                 </div>
                 <div className="flex gap-1">
-                  <button
-                    onClick={() => setEditingDeposit(deposit)}
-                    className="p-2 text-gray-400 hover:text-pink-500 transition-colors"
-                  >
-                    <Edit3 size={18} />
-                  </button>
-                  <button
-                    onClick={() => setPendingDeleteId(deposit.id!)}
-                    className="p-2 text-gray-400 hover:text-red-400 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  <button onClick={() => setEditingDeposit(deposit)} className="p-2 text-zinc-400 hover:text-accent transition-colors"><Edit3 size={18} /></button>
+                  <button onClick={() => setPendingDeleteId(deposit.id!)} className="p-2 text-zinc-400 hover:text-red-400 transition-colors"><Trash2 size={18} /></button>
                 </div>
               </div>
             ))
           )}
         </div>
 
-        <div className="mt-6 pt-4 border-t border-pink-50 flex-shrink-0">
-          <button
-            onClick={onClose}
-            className="w-full bg-gray-100 text-gray-600 font-bold p-4 rounded-xl active:scale-95 transition-transform"
-          >
+        <div className="mt-6 pt-4 border-t border-zinc-50 dark:border-zinc-800">
+          <button onClick={onClose} className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold p-4 rounded-xl active:scale-[0.98] transition-all">
             Close
           </button>
         </div>
       </div>
 
-      {editingDeposit && (
-        <EditDepositModal
-          deposit={editingDeposit}
-          onClose={() => setEditingDeposit(null)}
-          onSuccess={(msg) => onToast(msg)}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={pendingDeleteId !== null}
-        title="Delete Deposit?"
-        message="Are you sure you want to remove this deposit record? This will update your goal progress immediately."
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        onConfirm={handleDeleteDeposit}
-        onCancel={() => setPendingDeleteId(null)}
-      />
+      {editingDeposit && <EditDepositModal deposit={editingDeposit} onClose={() => setEditingDeposit(null)} onSuccess={onToast} />}
+      <ConfirmationModal isOpen={pendingDeleteId !== null} title="Delete Deposit?" message="Remove this record? Your progress will update." confirmLabel="Delete" confirmVariant="danger" onConfirm={handleDeleteDeposit} onCancel={() => setPendingDeleteId(null)} />
     </div>
   );
 };

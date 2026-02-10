@@ -1,6 +1,10 @@
 import Dexie, { Table } from 'dexie';
 import { Goal, Deposit, Account } from '../types';
 
+/**
+ * SavingsDB extends Dexie to provide a strongly-typed database instance.
+ * Dexie acts as an offline cache for Firestore.
+ */
 export class SavingsDB extends Dexie {
   goals!: Table<Goal>;
   deposits!: Table<Deposit>;
@@ -8,12 +12,11 @@ export class SavingsDB extends Dexie {
 
   constructor() {
     super('SavingsDB');
-    // Using this.version() to define the schema in the constructor. 
-    // Ensure Dexie is imported as the default class for proper property inheritance.
-    this.version(2).stores({
-      goals: '++id, name, accountId, targetDate, isCompleted',
-      deposits: '++id, goalId, date',
-      accounts: '++id, name'
+    // Version 4 adds indexing for archiving
+    this.version(4).stores({
+      goals: 'id, name, accountId, targetDate, isCompleted, isArchived',
+      deposits: 'id, goalId, date',
+      accounts: 'id, name'
     });
   }
 }

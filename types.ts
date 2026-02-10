@@ -1,24 +1,27 @@
 
 export interface Goal {
-  id?: number;
+  id?: string; // Using string for Firestore doc IDs
   name: string;
+  emoji?: string;
   totalAmount: number;
   targetDate: string;
-  accountId: number;
+  accountId: string;
   createdAt: string;
   isCompleted?: boolean;
   completedAt?: string;
+  isArchived?: boolean;
+  archivedAt?: string | null;
 }
 
 export interface Deposit {
-  id?: number;
-  goalId: number;
+  id?: string;
+  goalId: string;
   amount: number;
   date: string;
 }
 
 export interface Account {
-  id?: number;
+  id?: string;
   name: string;
   initialBalance: number;
   createdAt: string;

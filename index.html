@@ -3,30 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PinkSave</title>
-    <!-- PWA Meta Tags -->
+    <title>Savr</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="PinkSave">
-    <meta name="theme-color" content="#fff0f6">
-    <link rel="apple-touch-icon" href="https://picsum.photos/192/192">
+    <meta name="apple-mobile-web-app-title" content="Savr">
+    <meta name="theme-color" content="#ffffff">
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --safe-top: env(safe-area-inset-top);
+            --safe-bottom: env(safe-area-inset-bottom);
+            --accent: #ec4899;
+            --accent-soft: #fdf2f8;
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
-            background-color: #fff0f6;
+            background-color: #ffffff;
+            color: #18181b;
+            margin: 0;
+            padding: 0;
+            overscroll-behavior-y: none;
+            transition: background-color 0.2s ease;
         }
-        /* Hide scrollbars for cleaner PWA look */
-        ::-webkit-scrollbar {
-            display: none;
+
+        .dark body {
+            background-color: #000000;
+            color: #f4f4f5;
         }
-        .safe-bottom {
-            padding-bottom: env(safe-area-inset-bottom);
+
+        ::-webkit-scrollbar { display: none; }
+        
+        /* iPhone Safe Areas */
+        .safe-top-padding { padding-top: calc(var(--safe-top) + 16px); }
+        .safe-bottom-padding { padding-bottom: calc(var(--safe-bottom) + 8px); }
+        
+        .bg-accent { background-color: var(--accent); }
+        .text-accent { color: var(--accent); }
+        .border-accent { border-color: var(--accent); }
+        .ring-accent { --tw-ring-color: var(--accent); }
+        .bg-accent-soft { background-color: var(--accent-soft); }
+
+        /* Minimalist transitions */
+        .transition-theme {
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
     </style>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        accent: 'var(--accent)',
+                        'accent-soft': 'var(--accent-soft)',
+                        zinc: {
+                            900: '#09090b',
+                            950: '#040405'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
 <script type="importmap">
 {
   "imports": {
@@ -36,22 +78,18 @@
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "dexie": "https://esm.sh/dexie@^4.3.0",
     "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0",
-    "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.3"
+    "canvas-confetti": "https://esm.sh/canvas-confetti@1.9.3",
+    "firebase/app": "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js",
+    "firebase/auth": "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js",
+    "firebase/firestore": "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js",
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "firebase/": "https://esm.sh/firebase@^12.9.0/"
   }
 }
 </script>
 </head>
-<body>
+<body class="light">
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(err => {
-                    console.log('SW registration failed: ', err);
-                });
-            });
-        }
-    </script>
 </body>
 </html>

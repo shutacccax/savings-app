@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'pinksave-v1';
+const CACHE_NAME = 'pinksave-v2';
 const ASSETS = [
   './',
   './index.html',

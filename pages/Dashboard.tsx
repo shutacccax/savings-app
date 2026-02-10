@@ -8,16 +8,26 @@ import { DepositModal } from '../components/DepositModal';
 import { ViewDepositsModal } from '../components/ViewDepositsModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { MonthlySummary } from '../components/MonthlySummary';
-import { Plus, PiggyBank, Calendar, Wallet, Trash2, History, CheckCircle2, PartyPopper, AlertTriangle } from 'lucide-react';
+import { Plus, PiggyBank, Calendar, Wallet, Trash2, History, Sparkles, X, Archive, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { auth } from '../firebase/config';
+import { fsDeleteGoal, fsArchiveGoal, fsRestoreGoal } from '../firebase/firestoreService';
+import { GoogleGenAI } from "@google/genai";
 
 export const Dashboard: React.FC = () => {
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
   const [viewHistoryGoal, setViewHistoryGoal] = useState<any | null>(null);
-  const [deleteGoalId, setDeleteGoalId] = useState<number | null>(null);
+  const [archiveGoalId, setArchiveGoalId] = useState<string | null>(null);
+  const [restoreGoalId, setRestoreGoalId] = useState<string | null>(null);
+  const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
+  const [isArchiveExpanded, setIsArchiveExpanded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   
-  const completedRef = useRef<Set<number>>(new Set());
+  // Ref to track goal states between renders to detect transitions
+  const prevGoalsRef = useRef<Record<string, boolean>>({});
+  const hasInitializedRef = useRef(false);
 
   useEffect(() => {
     if (toast) {
@@ -29,270 +39,205 @@ export const Dashboard: React.FC = () => {
   const showToast = (msg: string) => setToast(msg);
 
   const dashboardData = useLiveQuery(async () => {
-    try {
-      const allGoals = await db.goals.toArray();
-      const allDeposits = await db.deposits.toArray();
-      
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      
-      const lastMonthDate = new Date();
-      lastMonthDate.setMonth(now.getMonth() - 1);
-      const lastMonth = lastMonthDate.getMonth();
-      const lastMonthYear = lastMonthDate.getFullYear();
+    const allGoals = await db.goals.toArray();
+    const allDeposits = await db.deposits.toArray();
+    const now = new Date();
+    const activeGoalIds = new Set(allGoals.filter(g => !g.isArchived).map(g => g.id));
+    
+    let thisMonthTotal = 0;
+    let lastMonthTotal = 0;
+    allDeposits.forEach(d => {
+      if (!activeGoalIds.has(d.goalId)) return;
+      const dDate = new Date(d.date);
+      if (dDate.getMonth() === now.getMonth() && dDate.getFullYear() === now.getFullYear()) thisMonthTotal += d.amount;
+      else if (dDate.getMonth() === (now.getMonth() - 1 + 12) % 12) lastMonthTotal += d.amount;
+    });
 
-      let thisMonthTotal = 0;
-      let lastMonthTotal = 0;
+    const extendedGoals: GoalExtended[] = await Promise.all(
+      allGoals.map(async (goal) => {
+        const deposits = allDeposits.filter(d => d.goalId === goal.id);
+        const acc = await db.accounts.get(goal.accountId);
+        const totalSaved = roundToTwo(deposits.reduce((sum, d) => sum + d.amount, 0));
+        const remaining = Math.max(0, roundToTwo(goal.totalAmount - totalSaved));
+        const progressPercent = Math.min(100, goal.totalAmount > 0 ? (totalSaved / goal.totalAmount) * 100 : 0);
+        const daysRemaining = calculateDaysRemaining(goal.targetDate);
+        return {
+          ...goal,
+          totalSaved,
+          remaining,
+          progressPercent,
+          daysRemaining,
+          dailyRequired: daysRemaining > 0 ? roundToTwo(remaining / daysRemaining) : 0,
+          accountName: acc?.name || '?',
+          isCompleted: totalSaved >= goal.totalAmount 
+        };
+      })
+    );
 
-      allDeposits.forEach(d => {
-        const dDate = new Date(d.date);
-        const dMonth = dDate.getMonth();
-        const dYear = dDate.getFullYear();
-
-        if (dMonth === currentMonth && dYear === currentYear) {
-          thisMonthTotal = roundToTwo(thisMonthTotal + d.amount);
-        } else if (dMonth === lastMonth && dYear === lastMonthYear) {
-          lastMonthTotal = roundToTwo(lastMonthTotal + d.amount);
-        }
-      });
-
-      const extendedGoals: GoalExtended[] = await Promise.all(
-        allGoals.map(async (goal) => {
-          const deposits = allDeposits.filter(d => d.goalId === goal.id);
-          const accounts = await db.accounts.get(goal.accountId);
-          
-          const totalSaved = roundToTwo(deposits.reduce((sum, d) => sum + d.amount, 0));
-          const remaining = Math.max(0, roundToTwo(goal.totalAmount - totalSaved));
-          const progressPercent = Math.min(100, goal.totalAmount > 0 ? (totalSaved / goal.totalAmount) * 100 : 0);
-          const daysRemaining = calculateDaysRemaining(goal.targetDate);
-          
-          // Safer daily calculation
-          const dailyRequired = daysRemaining > 0 ? roundToTwo(remaining / daysRemaining) : 0;
-
-          const isReached = totalSaved >= goal.totalAmount;
-
-          if (isReached && !completedRef.current.has(goal.id!)) {
-            triggerConfetti();
-            completedRef.current.add(goal.id!);
-          } else if (!isReached) {
-            completedRef.current.delete(goal.id!);
-          }
-
-          return {
-            ...goal,
-            totalSaved,
-            remaining,
-            progressPercent,
-            daysRemaining,
-            dailyRequired,
-            accountName: accounts?.name || 'Unknown Account',
-            isCompleted: isReached 
-          };
-        })
-      );
-
-      return {
-        goals: extendedGoals,
-        thisMonthTotal,
-        lastMonthTotal
-      };
-    } catch (err) {
-      console.error('Dashboard Error:', err);
-      return null;
-    }
+    return { activeGoals: extendedGoals.filter(g => !g.isArchived), archivedGoals: extendedGoals.filter(g => g.isArchived), thisMonthTotal, lastMonthTotal };
   });
 
-  const triggerConfetti = () => {
-    const duration = 3 * 1000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 300 };
-    const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
+  useEffect(() => {
+    if (!dashboardData?.activeGoals) return;
 
-    const interval: any = setInterval(function() {
-      const timeLeft = animationEnd - Date.now();
-      if (timeLeft <= 0) return clearInterval(interval);
+    const currentActiveGoals = dashboardData.activeGoals;
 
-      const particleCount = 50 * (timeLeft / duration);
-      const colors = ['#ff4da6', '#ffffff', '#ffdf00'];
-      
-      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }, colors });
-      confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }, colors });
-    }, 250);
-  };
-
-  const handleDeleteGoal = async () => {
-    if (!deleteGoalId) return;
-    try {
-      // Corrected the transaction call to pass tables as an array and handle properties safely
-      await db.transaction('rw', [db.goals, db.deposits], async () => {
-        await db.deposits.where('goalId').equals(deleteGoalId).delete();
-        await db.goals.delete(deleteGoalId);
+    // Detect if this is the first time we've received data since mounting
+    if (!hasInitializedRef.current) {
+      currentActiveGoals.forEach(g => {
+        prevGoalsRef.current[g.id!] = !!g.isCompleted;
       });
-      showToast('Goal deleted');
-      setDeleteGoalId(null);
-    } catch (err) {
-      console.error(err);
-      showToast('Error: Failed to delete goal');
+      hasInitializedRef.current = true;
+      return;
     }
+
+    currentActiveGoals.forEach(g => {
+      const goalId = g.id!;
+      const isCurrentlyCompleted = !!g.isCompleted;
+      const wasPreviouslyCompleted = prevGoalsRef.current[goalId];
+
+      // Only trigger confetti if the goal was previously NOT completed and now IS
+      if (wasPreviouslyCompleted === false && isCurrentlyCompleted) {
+        confetti({ 
+          particleCount: 100, 
+          spread: 70, 
+          origin: { y: 0.6 }, 
+          colors: [getComputedStyle(document.documentElement).getPropertyValue('--accent')] 
+        });
+      }
+
+      // Update ref for subsequent changes
+      prevGoalsRef.current[goalId] = isCurrentlyCompleted;
+    });
+  }, [dashboardData?.activeGoals]);
+
+  const handleGetAdvice = async () => {
+    if (!dashboardData?.activeGoals.length) return;
+    setIsGeneratingAdvice(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Encourage the user based on these goals: ${dashboardData.activeGoals.map(g => g.name).join(', ')}. One sentence.`,
+      });
+      setAiAdvice(response.text);
+    } catch (err) { setAiAdvice("You're doing amazing! 🌸"); }
+    finally { setIsGeneratingAdvice(false); }
   };
 
-  if (!dashboardData) return <div className="p-12 text-center text-pink-400 font-bold animate-pulse">Loading Savings...</div>;
+  if (!dashboardData) return null;
+  const { activeGoals, archivedGoals, thisMonthTotal, lastMonthTotal } = dashboardData;
 
-  const { goals, thisMonthTotal, lastMonthTotal } = dashboardData;
+  const GoalCard = ({ goal, archived = false }: { goal: GoalExtended, archived?: boolean }) => (
+    <div className={`bg-white dark:bg-zinc-900 rounded-2xl p-5 border shadow-sm relative transition-all duration-300 ${archived ? 'grayscale opacity-60 border-zinc-100 dark:border-white/[0.03]' : (goal.isCompleted ? 'border-accent/30 dark:border-accent/10' : 'border-zinc-100 dark:border-white/[0.03]')}`}>
+      <div className="flex justify-between items-start mb-4">
+        <div className="flex gap-3">
+          <span className="text-3xl">{goal.emoji || '🎯'}</span>
+          <div>
+            <h3 className="font-bold text-zinc-800 dark:text-zinc-100 truncate max-w-[140px]">{goal.name}</h3>
+            <div className="flex items-center text-[10px] font-bold text-accent uppercase tracking-wider opacity-70">
+              <Wallet size={12} className="mr-1" />{goal.accountName}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`text-lg font-bold ${goal.isCompleted ? 'text-green-500' : 'text-accent'}`}>{Math.round(goal.progressPercent)}%</div>
+          {!archived ? (
+            <button onClick={() => setArchiveGoalId(goal.id!)} className="p-2 text-zinc-300 hover:text-accent transition-colors"><Archive size={18} /></button>
+          ) : (
+            <div className="flex">
+              <button onClick={() => setRestoreGoalId(goal.id!)} className="p-2 text-accent"><RotateCcw size={18} /></button>
+              <button onClick={() => setDeleteGoalId(goal.id!)} className="p-2 text-red-400"><Trash2 size={18} /></button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-5">
+        <div className="flex justify-between text-[10px] font-bold uppercase mb-1.5 text-zinc-400">
+          <span>{formatCurrency(goal.totalSaved)}</span>
+          <span>Target: {formatCurrency(goal.totalAmount)}</span>
+        </div>
+        <ProgressBar progress={goal.progressPercent} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="bg-accent/5 dark:bg-white/[0.02] rounded-xl p-3 border border-accent/5 dark:border-transparent">
+          <div className="text-[10px] text-accent uppercase font-bold tracking-wider mb-0.5 opacity-60">To Save</div>
+          <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{formatCurrency(goal.remaining)}</div>
+        </div>
+        <div className="bg-accent/5 dark:bg-white/[0.02] rounded-xl p-3 border border-accent/5 dark:border-transparent">
+          <div className="text-[10px] text-accent uppercase font-bold tracking-wider mb-0.5 opacity-60">Daily</div>
+          <div className="text-sm font-bold text-zinc-700 dark:text-zinc-300">{goal.isCompleted ? '🎉' : formatCurrency(goal.dailyRequired)}</div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center text-[11px] text-zinc-400 font-medium">
+          <Calendar size={13} className="mr-1 opacity-50" />
+          {formatDate(goal.targetDate)}
+        </div>
+        {!archived && (
+          <div className="flex gap-2">
+            <button onClick={() => setViewHistoryGoal(goal)} className="p-2 text-zinc-400 hover:text-accent transition-colors"><History size={20} /></button>
+            <button onClick={() => setSelectedGoal(goal)} disabled={goal.isCompleted} className={`px-4 py-2 rounded-xl font-bold text-xs uppercase transition-all ${goal.isCompleted ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400' : 'bg-accent text-white shadow-sm shadow-accent/20 active:scale-95'}`}>
+              {goal.isCompleted ? 'Done' : 'Deposit'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="px-4 pb-24 pt-6 max-w-2xl mx-auto">
-      {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] bg-pink-600 text-white px-6 py-3 rounded-2xl shadow-xl flex items-center animate-in fade-in slide-in-from-top-4 duration-300">
-          <CheckCircle2 size={18} className="mr-2" />
-          <span className="font-bold text-sm">{toast}</span>
-        </div>
-      )}
-
-      <header className="mb-8">
-        <h1 className="text-3xl font-black text-pink-600 tracking-tight">My Goals</h1>
-        <p className="text-pink-400 font-medium">Your financial journey starts here 🌸</p>
+    <div className="px-5">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">Savings</h1>
+        <p className="text-sm text-zinc-400 font-medium">Simplify your journey 🌸</p>
       </header>
 
-      <MonthlySummary 
-        thisMonthTotal={thisMonthTotal} 
-        lastMonthTotal={lastMonthTotal} 
-      />
+      <MonthlySummary thisMonthTotal={thisMonthTotal} lastMonthTotal={lastMonthTotal} />
 
-      {goals.length === 0 ? (
-        <div className="bg-white rounded-3xl p-10 text-center border-2 border-dashed border-pink-200">
-          <PiggyBank size={64} className="mx-auto text-pink-100 mb-4" />
-          <p className="text-gray-500 font-medium mb-6">Start your first goal today!</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {goals.map((goal) => (
-            <div 
-              key={goal.id} 
-              className={`bg-white rounded-3xl shadow-sm border p-5 overflow-hidden relative group animate-in fade-in slide-in-from-bottom-2 duration-500 transition-all ${
-                goal.isCompleted ? 'border-pink-200 ring-4 ring-pink-50/50' : 'border-pink-50'
-              }`}
-            >
-              <button
-                onClick={() => setDeleteGoalId(goal.id!)}
-                className="absolute top-4 right-4 p-2 text-gray-300 hover:text-red-400 transition-colors z-10"
-              >
-                <Trash2 size={18} />
-              </button>
+      <div className="mb-6">
+        {!aiAdvice ? (
+          <button onClick={handleGetAdvice} disabled={isGeneratingAdvice || activeGoals.length === 0} className="w-full bg-white dark:bg-zinc-900 border-2 border-dashed border-accent/10 dark:border-white/5 rounded-2xl p-4 flex items-center justify-center gap-2 text-accent font-bold text-sm disabled:opacity-50">
+            <Sparkles size={18} className={isGeneratingAdvice ? 'animate-spin' : ''} />
+            {isGeneratingAdvice ? 'Dreaming...' : 'Get Pinky\'s Tip'}
+          </button>
+        ) : (
+          <div className="bg-accent text-white rounded-2xl p-4 shadow-lg relative animate-in zoom-in">
+            <button onClick={() => setAiAdvice(null)} className="absolute top-2 right-2 p-1 text-white/50"><X size={14} /></button>
+            <p className="text-sm font-semibold pr-4">{aiAdvice}</p>
+          </div>
+        )}
+      </div>
 
-              <div className="flex justify-between items-start mb-4 pr-8">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xl font-bold text-gray-800 leading-tight">{goal.name}</h3>
-                    {goal.isCompleted && (
-                      <span className="flex items-center bg-green-100 text-green-600 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-                        <CheckCircle2 size={10} className="mr-1" />
-                        Completed
-                      </span>
-                    )}
-                    {!goal.isCompleted && goal.daysRemaining < 0 && (
-                      <span className="flex items-center bg-red-50 text-red-500 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-                        <AlertTriangle size={10} className="mr-1" />
-                        Date Passed
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center text-[10px] font-black text-pink-400 mt-1.5 uppercase tracking-widest">
-                    <Wallet size={12} className="mr-1" />
-                    {goal.accountName}
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className={`text-xl font-black ${goal.isCompleted ? 'text-green-500' : 'text-pink-500'}`}>
-                    {Math.round(goal.progressPercent)}%
-                  </div>
-                </div>
-              </div>
+      <div className="space-y-4 mb-8">
+        {activeGoals.length === 0 ? (
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-2xl p-12 text-center border-2 border-dashed border-zinc-100 dark:border-white/5">
+            <PiggyBank size={48} className="mx-auto text-zinc-200 dark:text-zinc-800 mb-3" />
+            <p className="text-zinc-400 text-sm font-medium">Ready to start saving?</p>
+          </div>
+        ) : (
+          activeGoals.map(g => <GoalCard key={g.id} goal={g} />)
+        )}
+      </div>
 
-              <div className="mb-5">
-                <div className="flex justify-between text-[11px] font-black uppercase tracking-wider mb-1.5">
-                  <span className="text-gray-400">{formatCurrency(goal.totalSaved)}</span>
-                  <span className="text-pink-300">Target: {formatCurrency(goal.totalAmount)}</span>
-                </div>
-                <ProgressBar progress={goal.progressPercent} />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 mb-6">
-                <div className="bg-pink-50/50 rounded-2xl p-3 border border-pink-100/50">
-                  <div className="text-[10px] text-pink-400 uppercase font-black tracking-widest mb-1">Remaining</div>
-                  <div className="text-sm font-black text-gray-700">{formatCurrency(goal.remaining)}</div>
-                </div>
-                <div className="bg-pink-50/50 rounded-2xl p-3 border border-pink-100/50">
-                  <div className="text-[10px] text-pink-400 uppercase font-black tracking-widest mb-1">Daily Goal</div>
-                  <div className="text-sm font-black text-gray-700">
-                    {goal.isCompleted ? 'Reached! 🎉' : goal.daysRemaining > 0 ? formatCurrency(goal.dailyRequired) : 'Overdue'}
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center text-xs text-gray-400 font-bold">
-                  <Calendar size={14} className="mr-1 text-pink-200" />
-                  {formatDate(goal.targetDate)}
-                  {!goal.isCompleted && goal.daysRemaining > 0 && (
-                    <span className="ml-2 px-2 py-0.5 bg-green-50 text-green-500 rounded-full font-black text-[10px]">
-                      {goal.daysRemaining}D LEFT
-                    </span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setViewHistoryGoal(goal)}
-                    className="flex items-center bg-pink-50 text-pink-500 px-3 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all hover:bg-pink-100"
-                  >
-                    <History size={14} className="mr-1" />
-                    Logs
-                  </button>
-                  <button
-                    onClick={() => setSelectedGoal(goal)}
-                    disabled={goal.isCompleted}
-                    className={`flex items-center px-5 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg active:scale-95 transition-all ${
-                      goal.isCompleted 
-                        ? 'bg-gray-100 text-gray-400 shadow-none cursor-not-allowed' 
-                        : 'bg-pink-500 text-white shadow-pink-100'
-                    }`}
-                  >
-                    {goal.isCompleted ? <PartyPopper size={16} className="mr-1" /> : <Plus size={16} className="mr-1" />}
-                    {goal.isCompleted ? 'Saved' : 'Add'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+      {archivedGoals.length > 0 && (
+        <div>
+          <button onClick={() => setIsArchiveExpanded(!isArchiveExpanded)} className="flex items-center justify-between w-full p-4 bg-zinc-50 dark:bg-zinc-900 rounded-xl text-zinc-400 font-bold text-[11px] uppercase tracking-widest border border-transparent dark:border-white/5">
+            <span>Archived ({archivedGoals.length})</span>
+            {isArchiveExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {isArchiveExpanded && <div className="space-y-4 mt-4 animate-in slide-in-from-top-2">{archivedGoals.map(g => <GoalCard key={g.id} goal={g} archived />)}</div>}
         </div>
       )}
 
-      {selectedGoal && (
-        <DepositModal 
-          goal={selectedGoal} 
-          onClose={() => setSelectedGoal(null)} 
-          onSuccess={() => showToast('Savings logged! ✨')}
-        />
-      )}
-
-      {viewHistoryGoal && (
-        <ViewDepositsModal
-          goal={viewHistoryGoal}
-          onClose={() => setViewHistoryGoal(null)}
-          onToast={showToast}
-        />
-      )}
-
-      <ConfirmationModal
-        isOpen={deleteGoalId !== null}
-        title="Delete Goal?"
-        message="This will remove the goal and all its savings records permanently. Ready to let it go?"
-        confirmLabel="Delete"
-        confirmVariant="danger"
-        onConfirm={handleDeleteGoal}
-        onCancel={() => setDeleteGoalId(null)}
-      />
+      {selectedGoal && <DepositModal goal={selectedGoal} onClose={() => setSelectedGoal(null)} onSuccess={() => showToast('Saved! ✨')} />}
+      {viewHistoryGoal && <ViewDepositsModal goal={viewHistoryGoal} onClose={() => setViewHistoryGoal(null)} onToast={showToast} />}
+      <ConfirmationModal isOpen={archiveGoalId !== null} title="Archive?" message="Hide from active list." confirmLabel="Archive" onConfirm={() => fsArchiveGoal(auth.currentUser!.uid, archiveGoalId!).then(() => { showToast('Archived'); setArchiveGoalId(null); })} onCancel={() => setArchiveGoalId(null)} />
+      <ConfirmationModal isOpen={restoreGoalId !== null} title="Restore?" message="Move to active." confirmLabel="Restore" onConfirm={() => fsRestoreGoal(auth.currentUser!.uid, restoreGoalId!).then(() => { showToast('Restored'); setRestoreGoalId(null); })} onCancel={() => setRestoreGoalId(null)} />
+      <ConfirmationModal isOpen={deleteGoalId !== null} title="Delete Forever?" message="Cannot be undone." confirmLabel="Delete" confirmVariant="danger" onConfirm={() => fsDeleteGoal(auth.currentUser!.uid, deleteGoalId!).then(() => { showToast('Deleted'); setDeleteGoalId(null); })} onCancel={() => setDeleteGoalId(null)} />
     </div>
   );
 };

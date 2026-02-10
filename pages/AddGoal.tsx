@@ -1,16 +1,13 @@
-
 import React, { useState } from 'react';
-import { db } from '../db/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { PiggyBank, ArrowLeft, AlertCircle } from 'lucide-react';
+import { db } from '../db/db';
+import { PiggyBank, Sparkles, AlertCircle, Calendar, Wallet, Hash } from 'lucide-react';
+import { auth } from '../firebase/config';
+import { fsAddGoal } from '../firebase/firestoreService';
 
-interface AddGoalProps {
-  onBack: () => void;
-  onSuccess: () => void;
-}
-
-export const AddGoal: React.FC<AddGoalProps> = ({ onBack, onSuccess }) => {
+export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: () => void }) => {
   const [name, setName] = useState('');
+  const [emoji, setEmoji] = useState('🎯');
   const [totalAmount, setTotalAmount] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -22,128 +19,103 @@ export const AddGoal: React.FC<AddGoalProps> = ({ onBack, onSuccess }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    if (!name.trim()) return setError("Goal name is required");
+    const uid = auth.currentUser?.uid;
     const amountNum = parseFloat(totalAmount);
-    if (isNaN(amountNum) || amountNum <= 0) return setError("Target amount must be greater than zero");
-    if (!targetDate) return setError("Target date is required");
-    if (!accountId) return setError("Please link a bank account");
+    if (!uid) return;
+    if (isNaN(amountNum) || amountNum <= 0) return setError("Enter amount");
+    if (!targetDate || !accountId) return setError("Missing fields");
 
     setIsSubmitting(true);
     try {
-      await db.goals.add({
-        name: name.trim(),
-        totalAmount: amountNum,
-        targetDate: new Date(targetDate).toISOString(),
-        accountId: parseInt(accountId),
-        createdAt: new Date().toISOString(),
-      });
+      await fsAddGoal(uid, { name: name.trim(), emoji, totalAmount: amountNum, targetDate: new Date(targetDate).toISOString(), accountId, createdAt: new Date().toISOString() });
       onSuccess();
-    } catch (err) {
-      console.error(err);
-      setError("Failed to create goal. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err) { setError("Error creating goal"); }
+    finally { setIsSubmitting(false); }
   };
 
   return (
-    <div className="px-4 py-6 max-w-xl mx-auto">
-      <button onClick={onBack} className="flex items-center text-pink-500 font-bold mb-6 hover:opacity-80 transition-opacity">
-        <ArrowLeft size={20} className="mr-1" />
-        Back
-      </button>
+    <div className="px-5 animate-in fade-in duration-500 pb-safe-offset">
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-zinc-800 dark:text-zinc-100">New Goal</h1>
+        <p className="text-sm text-zinc-400 font-medium">What's next on the list? 🌸</p>
+      </header>
 
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-pink-50">
-        <div className="flex items-center mb-6">
-          <div className="p-3 bg-pink-100 rounded-2xl mr-4">
-            <PiggyBank className="text-pink-500" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-800">New Savings Goal</h2>
-        </div>
-
+      <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center text-red-600 text-sm animate-in fade-in slide-in-from-top-1">
-            <AlertCircle size={18} className="mr-2 flex-shrink-0" />
-            <span className="font-semibold">{error}</span>
+          <div className="p-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-xl text-xs font-bold flex items-center gap-2">
+            <AlertCircle size={14} /> {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">What are you saving for?</label>
+        <div className="flex gap-4">
+          <div className="w-20">
+            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-2 ml-1">Icon</label>
+            <input
+              type="text"
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value.substring(0, 2))}
+              className="w-full h-14 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-center text-2xl focus:border-accent outline-none transition-all dark:text-white"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-2 ml-1">Name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., New Laptop, Vacation"
-              className="w-full p-4 rounded-2xl border border-pink-100 bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-pink-500 outline-none transition-all"
+              placeholder="e.g., Vacation"
+              className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-base font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
               required
             />
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Target Amount</label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-pink-400 font-bold">₱</span>
-                <input
-                  type="number"
-                  value={totalAmount}
-                  onChange={(e) => setTotalAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full p-4 pl-9 rounded-2xl border border-pink-100 bg-white text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-pink-500 outline-none"
-                  required
-                  min="0.01"
-                  step="0.01"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Target Date</label>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Target</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent font-bold">₱</span>
               <input
-                type="date"
-                value={targetDate}
-                onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-pink-100 bg-white text-gray-800 focus:ring-2 focus:ring-pink-500 outline-none min-h-[56px] appearance-none"
-                style={{ colorScheme: 'light' }}
+                type="number"
+                value={totalAmount}
+                onChange={(e) => setTotalAmount(e.target.value)}
+                className="w-full h-14 pl-8 pr-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-bold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
                 required
-                min={new Date().toISOString().split('T')[0]}
               />
             </div>
           </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1.5 ml-1">Linked Bank Account</label>
-            <div className="relative">
-              <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="w-full p-4 rounded-2xl border border-pink-100 bg-white text-gray-800 focus:ring-2 focus:ring-pink-500 outline-none appearance-none cursor-pointer"
-                required
-              >
-                <option value="" className="text-gray-400 bg-white">Select an account</option>
-                {accounts?.map((acc) => (
-                  <option key={acc.id} value={acc.id} className="text-gray-800 bg-white">
-                    {acc.name}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-              </div>
-            </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Deadline</label>
+            <input
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+              required
+            />
           </div>
+        </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-pink-500 text-white font-black p-5 rounded-2xl shadow-lg shadow-pink-200 active:scale-95 transition-all mt-4 disabled:bg-pink-300"
+        <div className="space-y-2">
+          <label className="text-[10px] font-bold text-zinc-400 uppercase ml-1">Source Bank</label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-semibold focus:border-accent outline-none appearance-none"
+            required
           >
-            {isSubmitting ? 'Creating Goal...' : 'Create Savings Goal'}
+            <option value="">Select account...</option>
+            {accounts?.map((acc) => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+          </select>
+        </div>
+
+        <div className="pt-4 flex gap-3">
+          <button type="button" onClick={onBack} className="flex-1 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="flex-[2] bg-accent text-white font-bold h-14 rounded-xl shadow-lg shadow-accent/20 active:scale-95 transition-all">
+            {isSubmitting ? '...' : 'Create Goal'}
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   );
 };
