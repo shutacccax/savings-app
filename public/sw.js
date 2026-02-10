@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'savr-v10';
+const CACHE_NAME = 'savr-v11';
 const LIBS_CACHE = 'savr-libs-v1';
 
 const ASSETS_TO_CACHE = [

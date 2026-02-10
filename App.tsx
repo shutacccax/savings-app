@@ -98,11 +98,11 @@ const App: React.FC = () => {
         {activeTab === 'settings' && <Settings darkMode={darkMode} setDarkMode={setDarkMode} accentKey={accentKey} setAccentKey={setAccentKey} accentColors={ACCENT_COLORS} />}
       </main>
 
-      {/* Offline Banner moved above navigation bar */}
+      {/* Offline Banner moved higher and lowered opacity */}
       {isOffline && (
-        <div className="fixed bottom-20 left-0 right-0 z-30 animate-in slide-in-from-bottom-2 duration-300">
+        <div className="fixed bottom-32 left-0 right-0 z-30 animate-in slide-in-from-bottom-2 duration-300 pointer-events-none">
           <div className="max-w-lg mx-auto px-4">
-            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md text-white text-[10px] py-1.5 rounded-t-xl text-center font-bold flex items-center justify-center gap-2 border-t border-x border-white/10">
+            <div className="bg-zinc-900/60 dark:bg-zinc-800/60 backdrop-blur-lg text-white text-[10px] py-2 rounded-2xl text-center font-bold flex items-center justify-center gap-2 border border-white/10 shadow-lg">
               <WifiOff size={12} className="text-accent" />
               OFFLINE MODE — Changes will sync when online
             </div>
