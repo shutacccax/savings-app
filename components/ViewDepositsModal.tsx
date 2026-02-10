@@ -36,8 +36,8 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 max-h-[80vh] flex flex-col animate-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-t-[32px] sm:rounded-3xl shadow-2xl p-6 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300 pb-safe" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-6">
           <div>
             <h3 className="text-xl font-bold text-accent">History</h3>
@@ -48,7 +48,7 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-3">
+        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
           {!deposits ? (
             <p className="text-center text-zinc-400 py-8">Loading history...</p>
           ) : deposits.length === 0 ? (
@@ -78,7 +78,7 @@ export const ViewDepositsModal: React.FC<ViewDepositsModalProps> = ({ goal, onCl
         </div>
 
         <div className="mt-6 pt-4 border-t border-zinc-50 dark:border-zinc-800">
-          <button onClick={onClose} className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold p-4 rounded-xl active:scale-[0.98] transition-all">
+          <button onClick={onClose} className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold p-4 rounded-2xl active:scale-[0.98] transition-all">
             Close
           </button>
         </div>

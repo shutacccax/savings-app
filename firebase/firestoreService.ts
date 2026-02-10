@@ -16,6 +16,19 @@ import { firestore } from './config';
 import { db } from '../db/db';
 import { Goal, Deposit, Account } from '../types';
 
+/**
+ * Utility to remove undefined properties from an object for Firestore compatibility.
+ */
+const cleanObject = (obj: any) => {
+  const clean: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      clean[key] = obj[key];
+    }
+  });
+  return clean;
+};
+
 const syncCollectionToDexie = (uid: string, subPath: string, dexieTable: any) => {
   const colRef = collection(firestore, `users/${uid}/${subPath}`);
   
@@ -59,8 +72,9 @@ export const isFirestoreEmpty = async (uid: string) => {
 
 export const fsAddGoal = async (uid: string, goal: Goal) => {
   const docRef = doc(collection(firestore, `users/${uid}/goals`));
+  const cleanedGoal = cleanObject(goal);
   const data = { 
-    ...goal, 
+    ...cleanedGoal, 
     id: docRef.id, 
     emoji: goal.emoji || "🎯",
     isArchived: false,
@@ -74,7 +88,7 @@ export const fsAddGoal = async (uid: string, goal: Goal) => {
 
 export const fsUpdateGoal = async (uid: string, goalId: string, updates: Partial<Goal>) => {
   const docRef = doc(firestore, `users/${uid}/goals/${goalId}`);
-  await updateDoc(docRef, { ...updates, updatedAt: serverTimestamp() });
+  await updateDoc(docRef, { ...cleanObject(updates), updatedAt: serverTimestamp() });
 };
 
 export const fsArchiveGoal = async (uid: string, goalId: string) => {
@@ -101,7 +115,7 @@ export const fsDeleteGoal = async (uid: string, goalId: string) => {
 
 export const fsAddAccount = async (uid: string, account: Account) => {
   const docRef = doc(collection(firestore, `users/${uid}/accounts`));
-  const data = { ...account, id: docRef.id, createdAt: new Date().toISOString(), updatedAt: serverTimestamp() };
+  const data = { ...cleanObject(account), id: docRef.id, createdAt: new Date().toISOString(), updatedAt: serverTimestamp() };
   await setDoc(docRef, data);
   return docRef.id;
 };
@@ -112,7 +126,7 @@ export const fsDeleteAccount = async (uid: string, accountId: string) => {
 
 export const fsAddDeposit = async (uid: string, deposit: Deposit) => {
   const docRef = doc(collection(firestore, `users/${uid}/deposits`));
-  const data = { ...deposit, id: docRef.id, updatedAt: serverTimestamp() };
+  const data = { ...cleanObject(deposit), id: docRef.id, updatedAt: serverTimestamp() };
   
   const goalRef = doc(firestore, `users/${uid}/goals/${deposit.goalId}`);
   const goalSnap = await getDoc(goalRef);
@@ -149,11 +163,9 @@ export const fsUpdateDeposit = async (uid: string, depositId: string, updates: P
   if (goalSnap.exists()) {
     const goalData = goalSnap.data() as Goal;
     
-    // Handle Challenge Mode synchronization
     if (goalData.mode === 'challenge') {
       let updatedDenominations = [...(goalData.denominations || [])];
 
-      // 1. Revert Old Quantity
       if (oldDeposit.denominationValue && oldDeposit.quantity) {
         updatedDenominations = updatedDenominations.map(d => 
           d.value === oldDeposit.denominationValue 
@@ -162,7 +174,6 @@ export const fsUpdateDeposit = async (uid: string, depositId: string, updates: P
         );
       }
 
-      // 2. Apply New Quantity
       const newDenom = updates.denominationValue || oldDeposit.denominationValue;
       const newQty = updates.quantity !== undefined ? updates.quantity : oldDeposit.quantity;
       
@@ -181,7 +192,7 @@ export const fsUpdateDeposit = async (uid: string, depositId: string, updates: P
     }
   }
 
-  await updateDoc(depositRef, { ...updates, updatedAt: serverTimestamp() });
+  await updateDoc(depositRef, { ...cleanObject(updates), updatedAt: serverTimestamp() });
 };
 
 export const fsDeleteDeposit = async (uid: string, depositId: string) => {

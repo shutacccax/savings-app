@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -57,18 +58,46 @@
             font-size: 16px !important; /* Prevents auto-zoom on iOS */
             appearance: none;
             -webkit-appearance: none;
+            outline: none;
+        }
+
+        /* Standardized Autofill Reset - Explicitly enforce rounding */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #f9fafb inset !important; /* bg-zinc-50 */
+            -webkit-text-fill-color: #18181b !important;
+            transition: background-color 5000s ease-in-out 0s;
+            border-radius: 1rem !important; /* Force rounded-2xl (1rem) on autofill */
+        }
+
+        .dark input:-webkit-autofill,
+        .dark input:-webkit-autofill:hover, 
+        .dark input:-webkit-autofill:focus, 
+        .dark input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 1000px #18181b inset !important; /* bg-zinc-900 */
+            -webkit-text-fill-color: #f4f4f5 !important;
+            border-radius: 1rem !important;
         }
 
         input[type="date"] {
             min-width: 0;
             width: 100%;
-            display: block;
+            display: flex; 
+            align-items: center; 
             box-sizing: border-box;
+            line-height: 1.25; 
         }
 
-        /* Safari specific date input alignment fix */
         input[type="date"]::-webkit-calendar-picker-indicator {
             margin-right: 4px;
+        }
+
+        input[type="date"]::-webkit-datetime-edit {
+            display: flex;
+            align-items: center;
+            height: 100%;
         }
 
         .bg-accent { background-color: var(--accent); }
@@ -77,9 +106,13 @@
         .ring-accent { --tw-ring-color: var(--accent); }
         .bg-accent-soft { background-color: var(--accent-soft); }
 
-        /* Minimalist transitions */
         .transition-theme {
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Ensure smooth modal bottom sheet behavior */
+        .pb-safe {
+            padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
         }
     </style>
     <script>
@@ -91,9 +124,14 @@
                         accent: 'var(--accent)',
                         'accent-soft': 'var(--accent-soft)',
                         zinc: {
-                            900: '#09090b',
-                            950: '#040405'
+                            50: '#f9fafb',
+                            900: '#18181b',
+                            950: '#09090b'
                         }
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                        '3xl': '1.5rem'
                     }
                 }
             }
@@ -103,7 +141,7 @@
 {
   "imports": {
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
+    "react//": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
     "react/jsx-runtime": "https://esm.sh/react@^19.2.4/jsx-runtime",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
@@ -114,7 +152,8 @@
     "firebase/auth": "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js",
     "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/"
+    "firebase/": "https://esm.sh/firebase@^12.9.0/",
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
@@ -123,22 +162,28 @@
     <div id="root"></div>
     <script type="module" src="index.tsx"></script>
     <script>
-        // Service Worker Registration & Update Handling
+        // Safer SW Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
+                const swPath = 'sw.js'; 
+                
+                navigator.serviceWorker.register(swPath).then(reg => {
                     reg.addEventListener('updatefound', () => {
                         const newWorker = reg.installing;
                         newWorker.addEventListener('statechange', () => {
                             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // New version available, trigger skip waiting
                                 newWorker.postMessage({ type: 'SKIP_WAITING' });
                             }
                         });
                     });
-                }).catch(err => console.error('SW registration failed:', err));
+                }).catch(err => {
+                    if (err.message && err.message.includes('origin')) {
+                        console.debug('SW origin mismatch - skipping registration for this environment');
+                    } else {
+                        console.warn('SW registration failed:', err);
+                    }
+                });
 
-                // Handle the reload when the new service worker takes over
                 let refreshing = false;
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
                     if (!refreshing) {

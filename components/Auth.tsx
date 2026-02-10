@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { login, register } from '../firebase/authService';
 import { PiggyBank, Mail, Lock, LogIn, UserPlus, AlertCircle, Eye, EyeOff } from 'lucide-react';
@@ -38,7 +39,7 @@ export const Auth: React.FC = () => {
         </div>
 
         {error && (
-          <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-xl flex items-center text-xs font-bold animate-in fade-in">
+          <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-2xl flex items-center text-xs font-bold animate-in fade-in">
             <AlertCircle size={14} className="mr-2" />
             <span>{error}</span>
           </div>
@@ -55,7 +56,7 @@ export const Auth: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className="w-full h-14 pl-12 pr-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-medium focus:border-accent outline-none transition-all"
+              className="w-full h-14 pl-12 pr-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium focus:border-accent dark:focus:border-accent outline-none transition-all placeholder:text-zinc-400"
               required
             />
           </div>
@@ -69,7 +70,7 @@ export const Auth: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className="w-full h-14 pl-12 pr-12 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-medium focus:border-accent outline-none transition-all"
+              className="w-full h-14 pl-12 pr-12 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-medium focus:border-accent dark:focus:border-accent outline-none transition-all placeholder:text-zinc-400"
               required
             />
             <button
@@ -85,7 +86,7 @@ export const Auth: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-accent text-white font-bold h-14 rounded-xl shadow-lg shadow-accent/20 active:scale-95 transition-all mt-4 flex items-center justify-center gap-2"
+            className="w-full bg-accent text-white font-bold h-14 rounded-2xl shadow-lg shadow-accent/20 active:scale-95 transition-all mt-4 flex items-center justify-center gap-2"
           >
             {loading ? "..." : (isLogin ? "Sign In" : "Register")}
           </button>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dashboard } from './pages/Dashboard';
 import { AddGoal } from './pages/AddGoal';
@@ -77,29 +78,24 @@ const App: React.FC = () => {
         {activeTab === 'settings' && <Settings darkMode={darkMode} setDarkMode={setDarkMode} accentKey={accentKey} setAccentKey={setAccentKey} accentColors={ACCENT_COLORS} />}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] px-6 z-40 safe-bottom-padding">
-        <div className="max-w-lg mx-auto flex justify-between items-center h-20">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] z-40 safe-bottom-padding">
+        <div className="max-w-lg mx-auto grid grid-cols-5 h-20">
           <NavButton active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} icon={<Home size={22} />} label="Home" />
           <NavButton active={activeTab === 'accounts'} onClick={() => setActiveTab('accounts')} icon={<Landmark size={22} />} label="Banks" />
           
-          <div className="relative -top-4">
+          <div className="flex flex-col items-center justify-center">
             <button
               onClick={() => setActiveTab('add-goal')}
-              className={`bg-accent text-white p-4 rounded-full shadow-lg shadow-accent/20 active:scale-90 transition-all border-4 border-white dark:border-zinc-950 flex items-center justify-center ${activeTab === 'add-goal' ? 'rotate-45' : ''}`}
+              className={`bg-accent text-white w-14 h-14 rounded-full shadow-lg shadow-accent/20 active:scale-90 transition-all border-4 border-white dark:border-zinc-950 flex items-center justify-center relative -top-6 ${activeTab === 'add-goal' ? 'rotate-45' : ''}`}
+              aria-label="Add New Goal"
             >
-              <Plus size={24} />
+              <Plus size={26} />
             </button>
           </div>
 
           <NavButton active={activeTab === 'settings'} onClick={() => setActiveTab('settings')} icon={<SettingsIcon size={22} />} label="Theme" />
           
-          <button 
-            onClick={() => setIsLogoutModalOpen(true)}
-            className="flex flex-col items-center justify-center space-y-1 text-zinc-400 dark:text-zinc-600 hover:text-red-400 transition-colors"
-          >
-            <LogOut size={22} />
-            <span className="text-[10px] uppercase tracking-wider font-semibold">Logout</span>
-          </button>
+          <NavButton active={false} onClick={() => setIsLogoutModalOpen(true)} icon={<LogOut size={22} />} label="Logout" danger />
         </div>
       </nav>
 
@@ -119,13 +115,21 @@ const App: React.FC = () => {
   );
 };
 
-const NavButton = ({ active, onClick, icon, label }: { active: boolean, onClick: () => void, icon: any, label: string }) => (
+const NavButton = ({ active, onClick, icon, label, danger }: { active: boolean, onClick: () => void, icon: any, label: string, danger?: boolean }) => (
   <button
     onClick={onClick}
-    className={`flex flex-col items-center justify-center space-y-1 transition-all ${active ? 'text-accent' : 'text-zinc-400 dark:text-zinc-600 hover:text-accent/60'}`}
+    className={`flex flex-col items-center justify-center space-y-1 transition-all h-full ${
+      active 
+        ? 'text-accent' 
+        : danger 
+          ? 'text-zinc-400 dark:text-zinc-600 hover:text-red-400' 
+          : 'text-zinc-400 dark:text-zinc-600 hover:text-accent/60'
+    }`}
   >
-    {icon}
-    <span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span>
+    <div className="flex items-center justify-center">
+      {icon}
+    </div>
+    <span className="text-[10px] uppercase tracking-wider font-bold">{label}</span>
   </button>
 );
 

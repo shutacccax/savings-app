@@ -5,7 +5,7 @@ import { db } from '../db/db';
 import { AlertCircle, XCircle, Coins } from 'lucide-react';
 import { auth } from '../firebase/config';
 import { fsAddGoal } from '../firebase/firestoreService';
-import { Denomination } from '../types';
+import { Denomination, Goal } from '../types';
 
 const PHIL_DENOMINATIONS = [1, 5, 10, 20, 50, 100, 200, 500, 1000];
 
@@ -35,7 +35,10 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
     }
   }, [toast]);
 
-  const showToast = (msg: string) => setToast(msg);
+  const showToast = (msg: string) => {
+    setToast(null);
+    setTimeout(() => setToast(msg), 10);
+  };
 
   const calculateChallengeTotal = () => {
     return PHIL_DENOMINATIONS.reduce((sum, val) => {
@@ -54,12 +57,30 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
     const uid = auth.currentUser?.uid;
     if (!uid) return;
 
+    // 1. Basic Validations
+    if (!name.trim()) return setError("Goal name is required");
+    if (!accountId) return setError("Please select a bank account");
+    if (!targetDate) return setError("Please select a target date");
+
+    // 2. Date Logic
+    const selectedDate = new Date(targetDate);
+    const todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    
+    if (isNaN(selectedDate.getTime())) {
+      return setError("Invalid date selected");
+    }
+
+    if (selectedDate < todayDate) {
+      return showToast("Deadline must be today or later! 🗓️");
+    }
+
     let finalTotal = 0;
     let denoms: Denomination[] = [];
 
     if (mode === 'normal') {
       finalTotal = parseFloat(totalAmount);
-      if (isNaN(finalTotal) || finalTotal <= 0) return setError("Enter a valid amount");
+      if (isNaN(finalTotal) || finalTotal <= 0) return setError("Enter a valid target amount");
     } else {
       finalTotal = calculateChallengeTotal();
       if (finalTotal <= 0) return setError("Set at least one target quantity");
@@ -71,31 +92,28 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
       })).filter(d => d.targetQty > 0);
     }
 
-    if (!targetDate || !accountId) return setError("Please fill in all fields");
+    // Construct goal object carefully to avoid undefined fields
+    const goalData: Goal = {
+      name: name.trim(),
+      emoji,
+      mode,
+      totalAmount: finalTotal,
+      targetDate: selectedDate.toISOString(),
+      accountId,
+      createdAt: new Date().toISOString()
+    };
 
-    const selectedDate = new Date(targetDate);
-    const todayDate = new Date();
-    todayDate.setHours(0, 0, 0, 0);
-    
-    if (selectedDate < todayDate) {
-      return showToast("Deadline must be today or later! 🗓️");
+    if (mode === 'challenge') {
+      goalData.denominations = denoms;
     }
 
     setIsSubmitting(true);
     try {
-      await fsAddGoal(uid, { 
-        name: name.trim(), 
-        emoji, 
-        mode,
-        denominations: mode === 'challenge' ? denoms : undefined,
-        totalAmount: finalTotal, 
-        targetDate: new Date(targetDate).toISOString(), 
-        accountId, 
-        createdAt: new Date().toISOString() 
-      });
+      await fsAddGoal(uid, goalData);
       onSuccess();
     } catch (err) { 
-      setError("Error creating goal"); 
+      console.error("Goal Creation Error:", err);
+      setError("Error creating goal. Please try again."); 
     } finally { 
       setIsSubmitting(false); 
     }
@@ -117,24 +135,23 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-xl text-xs font-bold flex items-center gap-2">
+          <div className="p-3 bg-red-50 dark:bg-red-900/10 text-red-500 rounded-2xl text-xs font-bold flex items-center gap-2">
             <AlertCircle size={14} /> {error}
           </div>
         )}
 
-        {/* Mode Toggle */}
-        <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl">
+        <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-[20px]">
           <button
             type="button"
             onClick={() => setMode('normal')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${mode === 'normal' ? 'bg-white dark:bg-zinc-800 text-accent shadow-sm' : 'text-zinc-400'}`}
+            className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all ${mode === 'normal' ? 'bg-white dark:bg-zinc-800 text-accent shadow-sm' : 'text-zinc-400'}`}
           >
             Normal Goal
           </button>
           <button
             type="button"
             onClick={() => setMode('challenge')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${mode === 'challenge' ? 'bg-white dark:bg-zinc-800 text-accent shadow-sm' : 'text-zinc-400'}`}
+            className={`flex-1 py-3 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${mode === 'challenge' ? 'bg-white dark:bg-zinc-800 text-accent shadow-sm' : 'text-zinc-400'}`}
           >
             <Coins size={14} /> Peso Challenge
           </button>
@@ -147,7 +164,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
               type="text"
               value={emoji}
               onChange={(e) => setEmoji(e.target.value.substring(0, 2))}
-              className="w-full h-14 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-center text-2xl focus:border-accent outline-none transition-all dark:text-white"
+              className="w-full h-14 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-center text-2xl focus:border-accent dark:focus:border-accent outline-none transition-all dark:text-white"
             />
           </div>
           <div className="flex-1">
@@ -157,7 +174,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Vacation"
-              className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-base font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+              className="w-full h-14 px-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-base font-semibold text-zinc-900 dark:text-zinc-100 focus:border-accent dark:focus:border-accent outline-none transition-all placeholder:text-zinc-400"
               required
             />
           </div>
@@ -173,7 +190,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
                   type="number"
                   value={totalAmount}
                   onChange={(e) => setTotalAmount(e.target.value)}
-                  className="w-full h-14 pl-8 pr-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-bold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+                  className="w-full h-14 pl-8 pr-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm font-bold text-zinc-900 dark:text-zinc-100 focus:border-accent dark:focus:border-accent outline-none transition-all placeholder:text-zinc-400"
                   required
                 />
               </div>
@@ -185,9 +202,8 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
                 value={targetDate}
                 min={today}
                 onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+                className="w-full h-14 px-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:border-accent dark:focus:border-accent outline-none font-semibold transition-all"
                 required
-                style={{ minWidth: '0' }}
               />
             </div>
           </div>
@@ -212,7 +228,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
                     className={`p-3 rounded-2xl border transition-all duration-300 shadow-sm ${
                       hasValue 
                         ? 'bg-accent/5 border-accent/40 ring-1 ring-accent/10' 
-                        : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-white/[0.05]'
+                        : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-accent/40'
                     }`}
                   >
                     <div className={`text-[10px] font-bold uppercase mb-1 transition-colors duration-300 ${hasValue ? 'text-accent' : 'text-zinc-400'}`}>
@@ -224,7 +240,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
                       onChange={(e) => handleQtyChange(val, e.target.value)}
                       placeholder="0"
                       className={`w-full text-base font-bold bg-transparent outline-none transition-colors duration-300 ${
-                        hasValue ? 'text-accent' : 'text-zinc-800 dark:text-zinc-100'
+                        hasValue ? 'text-accent' : 'text-zinc-900 dark:text-zinc-100'
                       }`}
                     />
                   </div>
@@ -239,7 +255,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
                 value={targetDate}
                 min={today}
                 onChange={(e) => setTargetDate(e.target.value)}
-                className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+                className="w-full h-14 px-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-sm font-semibold text-zinc-900 dark:text-zinc-100 focus:border-accent dark:focus:border-accent outline-none font-semibold transition-all"
                 required
               />
             </div>
@@ -251,7 +267,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-100 font-semibold focus:border-accent outline-none appearance-none"
+            className="w-full h-14 px-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold focus:border-accent dark:focus:border-accent outline-none appearance-none transition-all"
             required
           >
             <option value="">Select account...</option>
@@ -260,8 +276,8 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
         </div>
 
         <div className="pt-4 flex gap-3">
-          <button type="button" onClick={onBack} className="flex-1 h-14 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold">Cancel</button>
-          <button type="submit" disabled={isSubmitting} className="flex-[2] bg-accent text-white font-bold h-14 rounded-xl shadow-lg shadow-accent/20 active:scale-95 transition-all">
+          <button type="button" onClick={onBack} className="flex-1 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold">Cancel</button>
+          <button type="submit" disabled={isSubmitting} className="flex-[2] bg-accent text-white font-bold h-14 rounded-2xl shadow-lg shadow-accent/20 active:scale-95 transition-all">
             {isSubmitting ? '...' : 'Create Goal'}
           </button>
         </div>

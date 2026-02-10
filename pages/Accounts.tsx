@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
@@ -68,21 +69,21 @@ export const Accounts: React.FC = () => {
       </header>
 
       {isAdding && (
-        <form onSubmit={handleAdd} className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-zinc-100 dark:border-white/5 mb-6 space-y-4 animate-in zoom-in duration-200">
+        <form onSubmit={handleAdd} className="bg-white dark:bg-zinc-900 rounded-[32px] p-5 shadow-sm border border-zinc-100 dark:border-white/5 mb-6 space-y-4 animate-in zoom-in duration-200">
           <div>
             <input
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(null); }}
               placeholder="e.g., GCash, Savings"
-              className="w-full p-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-zinc-50 dark:bg-white/[0.02] text-zinc-900 dark:text-zinc-100 outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent transition-all font-semibold"
+              className="w-full h-14 p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 outline-none focus:border-accent dark:focus:border-accent transition-all font-semibold placeholder:text-zinc-400"
               autoFocus
             />
             {error && <p className="text-red-500 text-[10px] mt-1 ml-1 font-bold uppercase tracking-widest">{error}</p>}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setIsAdding(false)} className="flex-1 p-3 font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-xl">Cancel</button>
-            <button type="submit" className="flex-1 bg-accent text-white font-bold p-3 rounded-xl shadow-lg shadow-accent/20">Add</button>
+            <button type="button" onClick={() => setIsAdding(false)} className="flex-1 p-3 font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 rounded-2xl">Cancel</button>
+            <button type="submit" className="flex-1 bg-accent text-white font-bold p-3 rounded-2xl shadow-lg shadow-accent/20">Add</button>
           </div>
         </form>
       )}
@@ -93,7 +94,7 @@ export const Accounts: React.FC = () => {
         ) : (
           accountsData.map((acc) => (
             <div key={acc.id} className="bg-white dark:bg-zinc-900 rounded-2xl p-4 flex items-center border border-zinc-50 dark:border-white/5">
-              <div className="p-3 bg-accent/10 dark:bg-accent/5 rounded-xl text-accent mr-4"><Landmark size={20} /></div>
+              <div className="p-3 bg-accent/10 dark:bg-accent/5 rounded-2xl text-accent mr-4"><Landmark size={20} /></div>
               <div className="flex-1">
                 <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-sm">{acc.name}</h3>
                 <p className="text-[11px] font-bold text-accent opacity-60 uppercase">{formatCurrency(acc.totalDeposits)}</p>

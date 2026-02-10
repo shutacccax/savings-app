@@ -6,16 +6,18 @@ import { GoalExtended } from '../types';
 import { formatCurrency, formatDate, calculateDaysRemaining, roundToTwo } from '../utils/formatters';
 import { ProgressBar } from '../components/ProgressBar';
 import { DepositModal } from '../components/DepositModal';
+import { EditGoalModal } from '../components/EditGoalModal';
 import { ViewDepositsModal } from '../components/ViewDepositsModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { MonthlySummary } from '../components/MonthlySummary';
-import { PiggyBank, Calendar, Wallet, Trash2, History, Archive, RotateCcw, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { PiggyBank, Calendar, Wallet, Trash2, History, Archive, RotateCcw, ChevronDown, ChevronUp, Edit3 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { auth } from '../firebase/config';
 import { fsDeleteGoal, fsArchiveGoal, fsRestoreGoal } from '../firebase/firestoreService';
 
 export const Dashboard: React.FC = () => {
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
+  const [editingGoal, setEditingGoal] = useState<any | null>(null);
   const [viewHistoryGoal, setViewHistoryGoal] = useState<any | null>(null);
   const [archiveGoalId, setArchiveGoalId] = useState<string | null>(null);
   const [restoreGoalId, setRestoreGoalId] = useState<string | null>(null);
@@ -120,10 +122,13 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`text-lg font-bold ${goal.isCompleted ? 'text-green-500' : 'text-accent'}`}>{Math.round(goal.progressPercent)}%</div>
+        <div className="flex items-center gap-1">
+          <div className={`text-lg font-bold mr-1 ${goal.isCompleted ? 'text-green-500' : 'text-accent'}`}>{Math.round(goal.progressPercent)}%</div>
           {!archived ? (
-            <button onClick={() => setArchiveGoalId(goal.id!)} className="p-2 text-zinc-300 hover:text-accent transition-colors"><Archive size={18} /></button>
+            <div className="flex">
+              <button onClick={() => setEditingGoal(goal)} className="p-2 text-zinc-300 hover:text-accent transition-colors"><Edit3 size={18} /></button>
+              <button onClick={() => setArchiveGoalId(goal.id!)} className="p-2 text-zinc-300 hover:text-accent transition-colors"><Archive size={18} /></button>
+            </div>
           ) : (
             <div className="flex">
               <button onClick={() => setRestoreGoalId(goal.id!)} className="p-2 text-accent"><RotateCcw size={18} /></button>
@@ -220,6 +225,7 @@ export const Dashboard: React.FC = () => {
       )}
 
       {selectedGoal && <DepositModal goal={selectedGoal} onClose={() => setSelectedGoal(null)} onSuccess={() => showToast('Saved! ✨')} />}
+      {editingGoal && <EditGoalModal goal={editingGoal} onClose={() => setEditingGoal(null)} onSuccess={showToast} />}
       {viewHistoryGoal && <ViewDepositsModal goal={viewHistoryGoal} onClose={() => setViewHistoryGoal(null)} onToast={showToast} />}
       <ConfirmationModal isOpen={archiveGoalId !== null} title="Archive?" message="Hide from active list." confirmLabel="Archive" onConfirm={() => fsArchiveGoal(auth.currentUser!.uid, archiveGoalId!).then(() => { showToast('Archived'); setArchiveGoalId(null); })} onCancel={() => setArchiveGoalId(null)} />
       <ConfirmationModal isOpen={restoreGoalId !== null} title="Restore?" message="Move to active." confirmLabel="Restore" onConfirm={() => fsRestoreGoal(auth.currentUser!.uid, restoreGoalId!).then(() => { showToast('Restored'); setRestoreGoalId(null); })} onCancel={() => setRestoreGoalId(null)} />
