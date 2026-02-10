@@ -12,8 +12,9 @@ export class SavingsDB extends Dexie {
 
   constructor() {
     super('SavingsDB');
+    // Fix: Using any-cast to access version() as the environment may have issues resolving inherited Dexie methods
     // Version 4 adds indexing for archiving
-    this.version(4).stores({
+    (this as any).version(4).stores({
       goals: 'id, name, accountId, targetDate, isCompleted, isArchived',
       deposits: 'id, goalId, date',
       accounts: 'id, name'

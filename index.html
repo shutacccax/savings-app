@@ -30,11 +30,20 @@
             padding: 0;
             overscroll-behavior-y: none;
             transition: background-color 0.2s ease;
+            /* Native PWA Feel: Disable text selection */
+            user-select: none;
+            -webkit-user-select: none;
         }
 
         .dark body {
             background-color: #000000;
             color: #f4f4f5;
+        }
+
+        /* Re-enable selection for inputs and interactive fields */
+        input, select, textarea, [contenteditable="true"] {
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         ::-webkit-scrollbar { display: none; }
@@ -110,9 +119,9 @@
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
 
-        /* Ensure smooth modal bottom sheet behavior */
+        /* Ensure smooth modal bottom sheet behavior - Flushed with bottom */
         .pb-safe {
-            padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
+            padding-bottom: env(safe-area-inset-bottom);
         }
     </style>
     <script>

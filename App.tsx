@@ -71,7 +71,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-200 safe-top-padding">
-      <main className="mx-auto w-full max-w-lg flex-1 pb-32 pt-4 px-1">
+      <main className="mx-auto w-full max-w-lg flex-1 pb-24 pt-4 px-1">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'accounts' && <Accounts />}
         {activeTab === 'add-goal' && <AddGoal onBack={() => setActiveTab('dashboard')} onSuccess={() => setActiveTab('dashboard')} />}
