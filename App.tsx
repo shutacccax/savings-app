@@ -91,19 +91,24 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col transition-colors duration-200 safe-top-padding">
-      {isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-zinc-900 text-white text-[10px] py-1 text-center font-bold flex items-center justify-center gap-2">
-          <WifiOff size={10} />
-          OFFLINE MODE — Changes will sync when online
-        </div>
-      )}
-
       <main className="mx-auto w-full max-w-lg flex-1 pb-24 pt-4 px-1">
         {activeTab === 'dashboard' && <Dashboard />}
         {activeTab === 'accounts' && <Accounts />}
         {activeTab === 'add-goal' && <AddGoal onBack={() => setActiveTab('dashboard')} onSuccess={() => setActiveTab('dashboard')} />}
         {activeTab === 'settings' && <Settings darkMode={darkMode} setDarkMode={setDarkMode} accentKey={accentKey} setAccentKey={setAccentKey} accentColors={ACCENT_COLORS} />}
       </main>
+
+      {/* Offline Banner moved above navigation bar */}
+      {isOffline && (
+        <div className="fixed bottom-20 left-0 right-0 z-30 animate-in slide-in-from-bottom-2 duration-300">
+          <div className="max-w-lg mx-auto px-4">
+            <div className="bg-zinc-900/90 dark:bg-zinc-800/90 backdrop-blur-md text-white text-[10px] py-1.5 rounded-t-xl text-center font-bold flex items-center justify-center gap-2 border-t border-x border-white/10">
+              <WifiOff size={12} className="text-accent" />
+              OFFLINE MODE — Changes will sync when online
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-xl border-t border-zinc-100 dark:border-white/[0.05] z-40">
         <div className="max-w-lg mx-auto grid grid-cols-5 h-20">
