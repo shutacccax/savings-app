@@ -9,11 +9,12 @@
     <meta name="apple-mobile-web-app-title" content="Savr">
     <meta name="theme-color" content="#ffffff">
     <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-180.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --safe-top: env(safe-area-inset-top);
+            --safe-top: calc(env(safe-area-inset-top) + 16px);
             --safe-bottom: env(safe-area-inset-bottom);
             --accent: #ec4899;
             --accent-soft: #fdf2f8;
@@ -75,6 +76,7 @@
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
+    "react/jsx-runtime": "https://esm.sh/react@^19.2.4/jsx-runtime",
     "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "dexie": "https://esm.sh/dexie@^4.3.0",
     "dexie-react-hooks": "https://esm.sh/dexie-react-hooks@^4.2.0",

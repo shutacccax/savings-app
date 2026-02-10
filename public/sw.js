@@ -1,8 +1,13 @@
-const CACHE_NAME = 'pinksave-v1';
+const CACHE_NAME = 'pinksave-v4';
+
 const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/manifest.json',
+  '/icon-180.png',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/favicon.png'
 ];
 
 self.addEventListener('install', (event) => {

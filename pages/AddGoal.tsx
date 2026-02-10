@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/db';
-import { PiggyBank, Sparkles, AlertCircle, Calendar, Wallet, Hash } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { auth } from '../firebase/config';
 import { fsAddGoal } from '../firebase/firestoreService';
 
@@ -90,7 +90,7 @@ export const AddGoal = ({ onBack, onSuccess }: { onBack: () => void, onSuccess: 
               type="date"
               value={targetDate}
               onChange={(e) => setTargetDate(e.target.value)}
-              className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none"
+              className="w-full h-14 px-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-white dark:bg-zinc-900 text-sm font-semibold text-zinc-800 dark:text-zinc-100 focus:border-accent outline-none min-w-0"
               required
             />
           </div>

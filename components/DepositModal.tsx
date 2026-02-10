@@ -74,7 +74,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({ goal, onClose, onSuc
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full p-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-zinc-50 dark:bg-white/[0.02] text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/10 focus:border-accent outline-none"
+              className="w-full p-4 rounded-xl border border-zinc-100 dark:border-white/[0.05] bg-zinc-50 dark:bg-white/[0.02] text-zinc-900 dark:text-zinc-100 focus:ring-2 focus:ring-accent/10 focus:border-accent outline-none min-w-0"
               required
               max={new Date().toISOString().split('T')[0]}
             />

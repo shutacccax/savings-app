@@ -25,7 +25,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
       <div className="space-y-6">
         {/* Appearance Section */}
-        <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-accent/10 dark:border-accent/5">
+        <section className="bg-white dark:bg-white/[0.02] rounded-2xl p-6 shadow-sm border border-accent/10 dark:border-transparent">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-accent/10 rounded-xl text-accent">
               <Sun size={20} className="dark:hidden" />
@@ -34,7 +34,7 @@ export const Settings: React.FC<SettingsProps> = ({
             <h2 className="text-lg font-bold text-gray-800 dark:text-gray-100">Appearance</h2>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-accent/5 rounded-2xl">
+          <div className="flex items-center justify-between p-4 bg-accent/5 dark:bg-white/[0.03] rounded-2xl">
             <div>
               <p className="font-bold text-gray-800 dark:text-gray-200">Dark Mode</p>
               <p className="text-xs text-zinc-500">Easier on the eyes at night</p>
@@ -49,7 +49,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </section>
 
         {/* Accent Color Section */}
-        <section className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-accent/10 dark:border-accent/5">
+        <section className="bg-white dark:bg-white/[0.02] rounded-2xl p-6 shadow-sm border border-accent/10 dark:border-transparent">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-accent/10 rounded-xl text-accent">
               <Palette size={20} />

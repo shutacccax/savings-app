@@ -8,11 +8,10 @@ import { DepositModal } from '../components/DepositModal';
 import { ViewDepositsModal } from '../components/ViewDepositsModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { MonthlySummary } from '../components/MonthlySummary';
-import { Plus, PiggyBank, Calendar, Wallet, Trash2, History, Sparkles, X, Archive, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import { PiggyBank, Calendar, Wallet, Trash2, History, Archive, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { auth } from '../firebase/config';
 import { fsDeleteGoal, fsArchiveGoal, fsRestoreGoal } from '../firebase/firestoreService';
-import { GoogleGenAI } from "@google/genai";
 
 export const Dashboard: React.FC = () => {
   const [selectedGoal, setSelectedGoal] = useState<any | null>(null);
@@ -22,8 +21,6 @@ export const Dashboard: React.FC = () => {
   const [deleteGoalId, setDeleteGoalId] = useState<string | null>(null);
   const [isArchiveExpanded, setIsArchiveExpanded] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
-  const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
   
   // Ref to track goal states between renders to detect transitions
   const prevGoalsRef = useRef<Record<string, boolean>>({});
@@ -82,7 +79,6 @@ export const Dashboard: React.FC = () => {
 
     const currentActiveGoals = dashboardData.activeGoals;
 
-    // Detect if this is the first time we've received data since mounting
     if (!hasInitializedRef.current) {
       currentActiveGoals.forEach(g => {
         prevGoalsRef.current[g.id!] = !!g.isCompleted;
@@ -96,7 +92,6 @@ export const Dashboard: React.FC = () => {
       const isCurrentlyCompleted = !!g.isCompleted;
       const wasPreviouslyCompleted = prevGoalsRef.current[goalId];
 
-      // Only trigger confetti if the goal was previously NOT completed and now IS
       if (wasPreviouslyCompleted === false && isCurrentlyCompleted) {
         confetti({ 
           particleCount: 100, 
@@ -105,25 +100,9 @@ export const Dashboard: React.FC = () => {
           colors: [getComputedStyle(document.documentElement).getPropertyValue('--accent')] 
         });
       }
-
-      // Update ref for subsequent changes
       prevGoalsRef.current[goalId] = isCurrentlyCompleted;
     });
   }, [dashboardData?.activeGoals]);
-
-  const handleGetAdvice = async () => {
-    if (!dashboardData?.activeGoals.length) return;
-    setIsGeneratingAdvice(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Encourage the user based on these goals: ${dashboardData.activeGoals.map(g => g.name).join(', ')}. One sentence.`,
-      });
-      setAiAdvice(response.text);
-    } catch (err) { setAiAdvice("You're doing amazing! 🌸"); }
-    finally { setIsGeneratingAdvice(false); }
-  };
 
   if (!dashboardData) return null;
   const { activeGoals, archivedGoals, thisMonthTotal, lastMonthTotal } = dashboardData;
@@ -197,20 +176,6 @@ export const Dashboard: React.FC = () => {
       </header>
 
       <MonthlySummary thisMonthTotal={thisMonthTotal} lastMonthTotal={lastMonthTotal} />
-
-      <div className="mb-6">
-        {!aiAdvice ? (
-          <button onClick={handleGetAdvice} disabled={isGeneratingAdvice || activeGoals.length === 0} className="w-full bg-white dark:bg-zinc-900 border-2 border-dashed border-accent/10 dark:border-white/5 rounded-2xl p-4 flex items-center justify-center gap-2 text-accent font-bold text-sm disabled:opacity-50">
-            <Sparkles size={18} className={isGeneratingAdvice ? 'animate-spin' : ''} />
-            {isGeneratingAdvice ? 'Dreaming...' : 'Get Pinky\'s Tip'}
-          </button>
-        ) : (
-          <div className="bg-accent text-white rounded-2xl p-4 shadow-lg relative animate-in zoom-in">
-            <button onClick={() => setAiAdvice(null)} className="absolute top-2 right-2 p-1 text-white/50"><X size={14} /></button>
-            <p className="text-sm font-semibold pr-4">{aiAdvice}</p>
-          </div>
-        )}
-      </div>
 
       <div className="space-y-4 mb-8">
         {activeGoals.length === 0 ? (
